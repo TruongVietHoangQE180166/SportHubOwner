@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { fieldService } from '../../services/fieldService';
 
 interface ImageUploadProps {
   images: string[];
@@ -16,26 +17,45 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   disabled = false
 }) => {
   const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (files: FileList) => {
+  const handleFileSelect = async (files: FileList) => {
     const validFiles = Array.from(files).filter(file => 
       file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024 // 10MB limit
     );
 
-    if (validFiles.length === 0) return;
+    if (validFiles.length === 0) {
+      setError('Vui lòng chọn file ảnh hợp lệ (tối đa 10MB)');
+      return;
+    }
 
-    // Simulate upload - in real app, upload to server/cloud storage
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newImage = e.target?.result as string;
-        if (newImage && images.length < maxImages) {
-          onChange([...images, newImage]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    // Check if adding these files would exceed the limit
+    if (images.length + validFiles.length > maxImages) {
+      setError(`Bạn chỉ có thể tải lên tối đa ${maxImages} ảnh`);
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Upload each file and get the URL
+      const uploadPromises = validFiles.map(file => fieldService.uploadImage(file));
+      const responses = await Promise.all(uploadPromises);
+      
+      // Extract URLs from responses (data field contains the URL)
+      const newImageUrls = responses.map(response => response.data);
+      
+      // Add new URLs to existing images
+      onChange([...images, ...newImageUrls]);
+    } catch (err) {
+      console.error('Error uploading images:', err);
+      setError(err instanceof Error ? err.message : 'Không thể upload hình ảnh. Vui lòng thử lại sau.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -53,7 +73,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     e.stopPropagation();
     setDragActive(false);
     
-    if (disabled) return;
+    if (disabled || uploading) return;
     
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
@@ -73,7 +93,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   const openFileDialog = () => {
-    if (fileInputRef.current) {
+    if (fileInputRef.current && !disabled && !uploading) {
       fileInputRef.current.click();
     }
   };
@@ -88,13 +108,20 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           <button
             type="button"
             onClick={openFileDialog}
-            disabled={disabled}
+            disabled={disabled || uploading}
             className="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
           >
             Thêm ảnh
           </button>
         )}
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+          {error}
+        </div>
+      )}
 
       {/* Image Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -112,7 +139,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             <button
               type="button"
               onClick={() => removeImage(index)}
-              disabled={disabled}
+              disabled={disabled || uploading}
               className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
             >
               <X className="w-4 h-4" />
@@ -127,7 +154,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
               dragActive
                 ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${disabled || uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -135,17 +162,25 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             onClick={openFileDialog}
           >
             <div className="text-center">
-              {dragActive ? (
-                <Upload className="w-8 h-8 text-green-500 mx-auto mb-2" />
+              {uploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 text-green-500 mx-auto mb-2 animate-spin" />
+                  <p className="text-sm text-gray-600">Đang tải lên...</p>
+                </>
+              ) : dragActive ? (
+                <>
+                  <Upload className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Thả ảnh vào đây</p>
+                </>
               ) : (
-                <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <>
+                  <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Kéo thả hoặc click để chọn</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PNG, JPG tối đa 10MB
+                  </p>
+                </>
               )}
-              <p className="text-sm text-gray-600">
-                {dragActive ? 'Thả ảnh vào đây' : 'Kéo thả hoặc click để chọn'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                PNG, JPG tối đa 10MB
-              </p>
             </div>
           </div>
         )}
@@ -159,7 +194,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         accept="image/*"
         onChange={handleInputChange}
         className="hidden"
-        disabled={disabled}
+        disabled={disabled || uploading}
       />
 
       {/* Helper Text */}

@@ -10,6 +10,8 @@ import {
   Settings,
   LogOut,
   User,
+  Users,
+  Shield,
 } from 'lucide-react';
 
 interface UserInfo {
@@ -33,13 +35,31 @@ const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { id: 'fields', label: 'Quản Lý Sân', icon: MapPin, path: '/fields' },
-    { id: 'bookings', label: 'Đặt Sân', icon: Calendar, path: '/bookings' },
-    { id: 'analytics', label: 'Thống Kê', icon: BarChart3, path: '/analytics' },
-    { id: 'settings', label: 'Cài Đặt', icon: Settings, path: '/settings' },
-  ];
+  // Get user role from sessionStorage since it's not passed directly to this component
+  const userRole = typeof window !== 'undefined' ? sessionStorage.getItem('role') : null;
+
+  // Define navigation items based on user role
+  const getNavItems = () => {
+    // Admin-specific navigation items
+    if (userRole === 'ADMIN') {
+      return [
+        { id: 'admin-dashboard', label: 'Admin Dashboard', icon: LayoutDashboard, path: '/admin-dashboard' },
+        { id: 'admin-users', label: 'User Management', icon: Users, path: '/admin-users' },
+        { id: 'admin-payments', label: 'Payment Management', icon: BarChart3, path: '/admin-payments' },
+        { id: 'admin-settings', label: 'Admin Settings', icon: Settings, path: '/admin-settings' },
+      ];
+    }
+    
+    // Owner-specific navigation items (default)
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+      { id: 'fields', label: 'Quản Lý Sân', icon: MapPin, path: '/fields' },
+      { id: 'bookings', label: 'Đặt Sân', icon: Calendar, path: '/bookings' },
+      { id: 'settings', label: 'Cài Đặt', icon: Settings, path: '/settings' },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   const handleNavClick = (tabId: string) => {
     onTabChange(tabId);
@@ -124,12 +144,20 @@ const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
             <div className="flex-1 min-w-0 py-1">
-              <p className="font-bold text-white text-base leading-tight break-words" title={user.name}>
-                {user.name.length > 20 ? `${user.name.substring(0, 20)}...` : user.name}
+              <p className="font-bold text-white text-base leading-tight break-words truncate" title={user.name || "No data"}>
+                {user.name ? (user.name.length > 20 ? `${user.name.substring(0, 20)}...` : user.name) : "No data"}
               </p>
-              <p className="text-sm text-green-400 font-medium leading-tight break-words mt-1" title={user.businessName}>
-                {user.businessName.length > 25 ? `${user.businessName.substring(0, 25)}...` : user.businessName}
+              <p className="text-sm text-green-400 font-medium leading-tight break-words truncate mt-1" title={user.businessName || "No data"}>
+                {user.businessName ? (user.businessName.length > 25 ? `${user.businessName.substring(0, 25)}...` : user.businessName) : "No data"}
               </p>
+              {userRole && (
+                <div className="mt-2 flex items-center">
+                  <Shield className="w-3 h-3 text-green-400 mr-1" />
+                  <span className="text-xs text-green-300 font-medium uppercase">
+                    {userRole}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
@@ -151,7 +179,7 @@ const Navigation: React.FC<NavigationProps> = ({
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 border-2 font-semibold ${
                       isActive
                         ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg border-green-600 transform scale-105'
-                        : 'text-gray-700 hover:bg-green-50 hover:text-green-700 border-transparent hover:border-green-200 hover:shadow-md'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-transparent hover:border-gray-200 hover:shadow-md'
                     }`}
                   >
                     <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-green-600'}`} />

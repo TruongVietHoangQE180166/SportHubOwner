@@ -1,7 +1,6 @@
 import React from "react";
 import { UserProfile } from "../types";
 import ProfileSettings from "./settings/ProfileSettings";
-import PaymentSettings from "./settings/PaymentSettings";
 import SecuritySettings from "./settings/SecuritySettings";
 
 interface SettingsProps {
@@ -9,7 +8,7 @@ interface SettingsProps {
   userLoading: boolean;
   userError: string | null;
   onUpdateUser: (updates: Partial<UserProfile>) => Promise<void>;
-  onUploadAvatar: (file: File) => Promise<void>;
+  onUploadAvatar: (file: File) => Promise<string>; // Updated return type
   clearUserError: () => void;
 }
 
@@ -21,6 +20,7 @@ const Settings: React.FC<SettingsProps> = ({
   onUploadAvatar,
   clearUserError,
 }) => {
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="space-y-0">
@@ -31,13 +31,12 @@ const Settings: React.FC<SettingsProps> = ({
             loading={userLoading}
             error={userError}
             onUpdateUser={onUpdateUser}
-            onUploadAvatar={onUploadAvatar}
+            onUploadAvatar={(file) => {
+              return onUploadAvatar(file);
+            }}
             clearError={clearUserError}
           />
         )}
-
-        {/* Payment Settings */}
-        <PaymentSettings />
 
         {/* Security Settings */}
         <SecuritySettings />

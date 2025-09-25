@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Booking } from '../../types';
-import ConfirmationModal from './ConfirmationModal';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -36,8 +35,6 @@ const getStatusText = (status: string) => {
   }
 };
 
-
-
 const formatDateTime = (dateTime: string) => {
   const date = new Date(dateTime);
   return date.toLocaleString('vi-VN');
@@ -46,55 +43,13 @@ const formatDateTime = (dateTime: string) => {
 interface BookingDetailViewProps {
   booking: Booking;
   onBack: () => void;
-  onConfirmBooking: (bookingId: string) => void;
-  onCancelBooking: (bookingId: string) => void;
+  // Removed onConfirmBooking and onCancelBooking props
 }
 
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({
   booking,
-  onBack,
-  onConfirmBooking,
-  onCancelBooking
+  onBack
 }) => {
-  const [confirmationModal, setConfirmationModal] = useState<{
-    isOpen: boolean;
-    type: 'confirm' | 'cancel';
-    bookingId: string;
-    customerName: string;
-    fieldName: string;
-  }>({ isOpen: false, type: 'confirm', bookingId: '', customerName: '', fieldName: '' });
-
-  const handleConfirmClick = () => {
-    setConfirmationModal({
-      isOpen: true,
-      type: 'confirm',
-      bookingId: booking.id,
-      customerName: booking.customerName,
-      fieldName: booking.fieldName
-    });
-  };
-
-  const handleCancelClick = () => {
-    setConfirmationModal({
-      isOpen: true,
-      type: 'cancel',
-      bookingId: booking.id,
-      customerName: booking.customerName,
-      fieldName: booking.fieldName
-    });
-  };
-
-  const handleModalConfirm = () => {
-    if (confirmationModal.type === 'confirm') {
-      onConfirmBooking(confirmationModal.bookingId);
-    } else {
-      onCancelBooking(confirmationModal.bookingId);
-    }
-  };
-
-  const handleModalClose = () => {
-    setConfirmationModal({ isOpen: false, type: 'confirm', bookingId: '', customerName: '', fieldName: '' });
-  };
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -225,58 +180,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="border-t border-gray-200 pt-6">
-            <div className="flex flex-wrap gap-3">
-              {booking.status === 'pending' && (
-                <>
-                  <button
-                    onClick={handleConfirmClick}
-                    className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-lg hover:bg-green-700 hover:border-green-700 transition-all duration-200"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Xác nhận đặt sân
-                  </button>
-                  <button
-                    onClick={handleCancelClick}
-                    className="inline-flex items-center px-6 py-3 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Hủy đặt sân
-                  </button>
-                </>
-              )}
-              
-              {booking.status === 'confirmed' && (
-                <button
-                  onClick={handleCancelClick}
-                  className="inline-flex items-center px-6 py-3 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Hủy đặt sân
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Action Buttons - Removed confirm and cancel buttons */}
         </div>
       </div>
-      
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={handleModalClose}
-        onConfirm={handleModalConfirm}
-        type={confirmationModal.type}
-        title={confirmationModal.type === 'confirm' ? 'Xác nhận đặt sân' : 'Hủy đặt sân'}
-        message={confirmationModal.type === 'confirm' 
-          ? 'Bạn có chắc chắn muốn xác nhận đơn đặt sân này không?'
-          : 'Bạn có chắc chắn muốn hủy đơn đặt sân này không?'
-        }
-        confirmText={confirmationModal.type === 'confirm' ? 'Xác nhận' : 'Hủy đơn'}
-        cancelText="Quay lại"
-        customerName={confirmationModal.customerName}
-        fieldName={confirmationModal.fieldName}
-      />
     </div>
   );
 };

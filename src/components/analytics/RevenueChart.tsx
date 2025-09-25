@@ -112,7 +112,22 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         </div>
       </div>
       
-      <div className="h-80 bg-gray-50 rounded-lg p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm text-green-100 font-medium mb-1">Doanh thu hôm nay</p>
+          <p className="text-xl font-bold">{formatCurrency(dailyRevenue)}</p>
+        </div>
+        <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm text-gray-300 font-medium mb-1">Doanh thu tháng này</p>
+          <p className="text-xl font-bold">{formatCurrency(monthlyRevenue)}</p>
+        </div>
+        <div className="bg-gradient-to-br from-black to-gray-900 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm text-gray-300 font-medium mb-1">Tổng doanh thu</p>
+          <p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p>
+        </div>
+      </div>
+      
+      <div className="h-80 bg-gray-50 rounded-lg p-4 mt-6">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -143,21 +158,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
             />
           </BarChart>
         </ResponsiveContainer>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-green-100 font-medium mb-1">Doanh thu hôm nay</p>
-          <p className="text-xl font-bold">{formatCurrency(dailyRevenue)}</p>
-        </div>
-        <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-gray-300 font-medium mb-1">Doanh thu tháng này</p>
-          <p className="text-xl font-bold">{formatCurrency(monthlyRevenue)}</p>
-        </div>
-        <div className="bg-gradient-to-br from-black to-gray-900 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-gray-300 font-medium mb-1">Tổng doanh thu</p>
-          <p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p>
-        </div>
       </div>
     </div>
   );

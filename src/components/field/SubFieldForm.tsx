@@ -1,6 +1,7 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
 import { SubField } from '../../types';
+import { fieldService } from '../../services/fieldService';
 
 interface SubFieldFormProps {
   subField?: SubField;
@@ -8,8 +9,6 @@ interface SubFieldFormProps {
   onSubmit: (subFieldData: Omit<SubField, 'id' | 'totalBookings'>) => Promise<void>;
   onCancel: () => void;
 }
-
-
 
 const SubFieldForm: React.FC<SubFieldFormProps> = ({ subField, venueId, onSubmit, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -28,9 +27,48 @@ const SubFieldForm: React.FC<SubFieldFormProps> = ({ subField, venueId, onSubmit
     
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
-    } catch (error) {
+      // If we're creating a new sub-field, call the createSmallField API
+      if (!subField) {
+        // Prepare data for the small field API
+        const smallFieldData = {
+          smallFiledName: formData.name,
+          description: formData.description,
+          capacity: formData.capacity.toString(), // API expects string
+          fieldId: venueId,
+          available: formData.isActive
+        };
+        
+        // Call the new createSmallField API
+        await fieldService.createSmallField(smallFieldData);
+      } 
+      // If we're updating an existing sub-field, call the updateSmallField API
+      else {
+        // Prepare data for the update small field API
+        const updateSmallFieldData = {
+          smallFieldId: subField.id,
+          smallFiledName: formData.name,
+          description: formData.description,
+          capacity: formData.capacity.toString(), // API expects string
+          available: formData.isActive
+        };
+        
+        // Call the new updateSmallField API
+        await fieldService.updateSmallField(updateSmallFieldData);
+      }
+      
+      // Only call the original onSubmit function after successful API call
+      // This will update the UI state without making another API call
+      await onSubmit({
+        venueId: venueId,
+        name: formData.name,
+        capacity: formData.capacity,
+        isActive: formData.isActive,
+        description: formData.description
+      });
+    } catch (error: any) {
       console.error('Error submitting sub-field form:', error);
+      // Show error message to user
+      alert(error.message || 'Không thể tạo/cập nhật sân nhỏ. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }

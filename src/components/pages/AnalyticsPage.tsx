@@ -1,9 +1,7 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
 import { useAnalyticsStore } from '../../stores/analyticsStore';
-import { useFieldStore } from '../../stores/fieldStore';
 import AnalyticsHeader from '../../components/analytics/AnalyticsHeader';
 import RevenueCards from '../../components/analytics/RevenueCards';
 import KeyMetrics from '../../components/analytics/KeyMetrics';
@@ -13,12 +11,10 @@ import FieldPerformance from '../analytics/FieldPerformance';
 
 const AnalyticsPage: React.FC = () => {
   const { analytics, fetchAnalytics } = useAnalyticsStore();
-  const { fields, fetchFields } = useFieldStore();
 
   useEffect(() => {
     fetchAnalytics();
-    fetchFields();
-  }, [fetchAnalytics, fetchFields]);
+  }, [fetchAnalytics]);
 
   const handleExportReport = () => {
     console.log('Exporting report...');
@@ -31,7 +27,7 @@ const AnalyticsPage: React.FC = () => {
     }).format(amount);
   };
 
-  if (!analytics || fields.length === 0) {
+  if (!analytics) {
     return (
       <div className="p-6 flex items-center justify-center h-screen">
         <p>Loading...</p>
@@ -43,7 +39,7 @@ const AnalyticsPage: React.FC = () => {
     <div className="p-6 space-y-6">
       <AnalyticsHeader onExportReport={handleExportReport} />
       <RevenueCards analytics={analytics} />
-      <KeyMetrics analytics={analytics} fields={fields} />
+      <KeyMetrics analytics={analytics} fields={[]} />
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <PeakHours analytics={analytics} />
       </div>
@@ -54,7 +50,7 @@ const AnalyticsPage: React.FC = () => {
         totalRevenue={analytics.totalRevenue}
         formatCurrency={formatCurrency}
       />
-      <FieldPerformance fields={fields} analytics={analytics} />
+      <FieldPerformance fields={[]} analytics={analytics} />
     </div>
   );
 };

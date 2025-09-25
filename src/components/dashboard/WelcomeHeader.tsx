@@ -20,7 +20,7 @@ const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({ userName, businessName })
             Chào mừng trở lại, <span className="text-green-400">{userName}</span>!
           </h1>
           <p className="text-gray-300 text-sm lg:text-base font-medium">
-            Quản lý hiệu quả <span className="text-white font-bold">{businessName}</span>
+            Hãy biến hôm nay thành bước khởi đầu cho những thành công lớn!
           </p>
         </div>
         <div className="text-left sm:text-right">

@@ -14,13 +14,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
   isLoading,
   error,
 }) => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ email, password });
+    onSubmit({ username, password });
   };
 
   return (
@@ -43,13 +43,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-8">
         <div>
           <label className="block text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">
-            Email
+            Tên đăng nhập
           </label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@sporthub.vn"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Nhập tên đăng nhập"
             className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-base lg:text-lg hover:border-gray-400 bg-gray-50/50"
             required
           />
@@ -64,7 +64,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="admin123"
+              placeholder="Nhập mật khẩu"
               className="w-full px-4 py-4 pr-12 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-base lg:text-lg hover:border-gray-400 bg-gray-50/50"
               required
             />

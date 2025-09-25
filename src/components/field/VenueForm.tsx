@@ -2,6 +2,7 @@ import React from 'react';
 import { Save, X, ChevronDown, Clock } from 'lucide-react';
 import { Venue } from '../../types';
 import ImageUpload from './ImageUpload';
+import { fieldService } from '../../services/fieldService';
 
 interface VenueFormProps {
   venue?: Venue;
@@ -9,25 +10,165 @@ interface VenueFormProps {
   onCancel: () => void;
 }
 
-const sportTypes = ['Bóng đá', 'Tennis', 'Cầu lông', 'Bóng rổ', 'Bóng chuyền', 'Bóng bàn'];
+// Define SportType interface to match API response
+interface SportType {
+  id: string;
+  name: string;
+  description: string;
+  createdDate: string;
+  lastModifiedDate: string;
+  status: boolean;
+}
 
 const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [showSportDropdown, setShowSportDropdown] = React.useState(false);
   const [timeErrors, setTimeErrors] = React.useState({ openTime: '', closeTime: '' });
+  const [sportTypes, setSportTypes] = React.useState<SportType[]>([]);
+  const [loadingSportTypes, setLoadingSportTypes] = React.useState(true);
   const sportDropdownRef = React.useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = React.useState({
-    name: venue?.name || '',
-    description: venue?.description || '',
-    sport: venue?.sport || '',
-    images: venue?.images || [],
-    hourlyRate: venue?.hourlyRate || 0,
-    peakRate: venue?.peakRate || 0,
-    openTime: venue?.openTime || '06:00',
-    closeTime: venue?.closeTime || '22:00',
-    location: venue?.location || '',
-    isActive: venue?.isActive ?? true
+  
+  // Format time data to ensure consistent HH:mm format
+  const formatTimeForForm = (timeString: string | undefined) => {
+    if (!timeString) return '06:00'; // default value
+    // If time is in HH:mm:ss format, extract only HH:mm
+    if (timeString.length > 5 && timeString.includes(':')) {
+      return timeString.substring(0, 5);
+    }
+    return timeString;
+  };
+
+  // Store selected sport type ID
+  const [selectedSportTypeId, setSelectedSportTypeId] = React.useState<string>('');
+
+  // Initialize form data with venue data if available - FIX: Initialize properly with venue data
+  const [formData, setFormData] = React.useState(() => {
+    if (venue) {
+      console.log('Initializing form data with venue:', venue);
+      // Type assertion to access API response properties
+      const venueData = venue as any;
+      return {
+        name: venueData.fieldName || venueData.name || '',
+        description: venueData.description || '',
+        sport: venueData.typeFieldName || venueData.sport || '',
+        images: venueData.images || [],
+        hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
+        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
+        openTime: formatTimeForForm(venueData.openTime),
+        closeTime: formatTimeForForm(venueData.closeTime),
+        location: venueData.location || '',
+        isActive: venueData.available !== undefined ? venueData.available : (venueData.isActive ?? true)
+      };
+    }
+    return {
+      name: '',
+      description: '',
+      sport: '',
+      images: [] as string[],
+      hourlyRate: 0,
+      peakRate: 0,
+      openTime: '06:00',
+      closeTime: '22:00',
+      location: '',
+      isActive: true
+    };
   });
+
+  // Update form data when venue prop changes (for when switching between edit modes)
+  React.useEffect(() => {
+    if (venue) {
+      console.log('Updating form data with venue:', venue); // Debug log
+      // Type assertion to access API response properties
+      const venueData = venue as any;
+      setFormData({
+        name: venueData.fieldName || venueData.name || '',
+        description: venueData.description || '',
+        sport: venueData.typeFieldName || venueData.sport || '',
+        images: venueData.images || [],
+        hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
+        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
+        openTime: formatTimeForForm(venueData.openTime),
+        closeTime: formatTimeForForm(venueData.closeTime),
+        location: venueData.location || '',
+        isActive: venueData.available !== undefined ? venueData.available : (venueData.isActive ?? true)
+      });
+    }
+  }, [venue]);
+
+  // Fetch sport types from API and set selected sport type
+  React.useEffect(() => {
+    const fetchSportTypes = async () => {
+      try {
+        const data = await fieldService.getTypeFields();
+        console.log('Fetched sport types:', data); // Debug log
+        
+        let sportsData: SportType[] = [];
+        
+        if (Array.isArray(data)) {
+          sportsData = data;
+        } else {
+          // Fallback to default sport types if API response is not as expected
+          sportsData = [
+            { id: '1', name: 'Bóng đá', description: '', createdDate: '', lastModifiedDate: '', status: true },
+            { id: '2', name: 'Tennis', description: '', createdDate: '', lastModifiedDate: '', status: true },
+            { id: '3', name: 'Cầu lông', description: '', createdDate: '', lastModifiedDate: '', status: true },
+            { id: '4', name: 'Bóng rổ', description: '', createdDate: '', lastModifiedDate: '', status: true },
+            { id: '5', name: 'Bóng chuyền', description: '', createdDate: '', lastModifiedDate: '', status: true },
+            { id: '6', name: 'Bóng bàn', description: '', createdDate: '', lastModifiedDate: '', status: true }
+          ];
+        }
+        
+        setSportTypes(sportsData);
+        
+        // IMPORTANT: Set selectedSportTypeId AFTER setting sport types
+        // This ensures we don't overwrite form data
+        if (venue) {
+          // Type assertion to access API response properties
+          const venueData = venue as any;
+          const sportName = venueData.typeFieldName || venueData.sport;
+          if (sportName) {
+            const matchingSport = sportsData.find((sport: SportType) => sport.name === sportName);
+            if (matchingSport) {
+              console.log('Found matching sport for venue:', matchingSport); // Debug log
+              setSelectedSportTypeId(matchingSport.id);
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('Error fetching sport types:', error);
+        // Fallback to default sport types in case of error
+        const defaultSports = [
+          { id: '1', name: 'Bóng đá', description: '', createdDate: '', lastModifiedDate: '', status: true },
+          { id: '2', name: 'Tennis', description: '', createdDate: '', lastModifiedDate: '', status: true },
+          { id: '3', name: 'Cầu lông', description: '', createdDate: '', lastModifiedDate: '', status: true },
+          { id: '4', name: 'Bóng rổ', description: '', createdDate: '', lastModifiedDate: '', status: true },
+          { id: '5', name: 'Bóng chuyền', description: '', createdDate: '', lastModifiedDate: '', status: true },
+          { id: '6', name: 'Bóng bàn', description: '', createdDate: '', lastModifiedDate: '', status: true }
+        ];
+        setSportTypes(defaultSports);
+        
+        // Find matching sport in default list
+        if (venue) {
+          // Type assertion to access API response properties
+          const venueData = venue as any;
+          const sportName = venueData.typeFieldName || venueData.sport;
+          if (sportName) {
+            const matchingSport = defaultSports.find(sport => sport.name === sportName);
+            if (matchingSport) {
+              console.log('Found matching sport in fallback:', matchingSport);
+              setSelectedSportTypeId(matchingSport.id);
+            }
+          }
+        }
+      } finally {
+        setLoadingSportTypes(false);
+      }
+    };
+
+    fetchSportTypes();
+  }, [venue]); // Keep venue as dependency to re-fetch when venue changes
 
   // Validate time format (HH:mm)
   const validateTimeFormat = (time: string): boolean => {
@@ -92,6 +233,36 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
     
     if (isSubmitting) return;
     
+    // Clear any previous submit error
+    setSubmitError(null);
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      alert('Vui lòng nhập tên sân');
+      return;
+    }
+    
+    if (!formData.location.trim()) {
+      alert('Vui lòng nhập địa chỉ');
+      return;
+    }
+    
+    if (formData.hourlyRate <= 0) {
+      alert('Giá thường phải lớn hơn 0');
+      return;
+    }
+    
+    if (formData.peakRate <= 0) {
+      alert('Giá cao điểm phải lớn hơn 0');
+      return;
+    }
+    
+    // Validate that at least one image is provided
+    if (formData.images.length === 0) {
+      alert('Vui lòng tải lên ít nhất một hình ảnh');
+      return;
+    }
+    
     // Validate time formats before submitting
     const openTimeValid = validateTimeFormat(formData.openTime);
     const closeTimeValid = validateTimeFormat(formData.closeTime);
@@ -104,15 +275,124 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
       return;
     }
     
+    // Validate that a sport type is selected
+    if (!selectedSportTypeId) {
+      alert('Vui lòng chọn loại thể thao');
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
+      // Format time as HH:mm:ss strings
+      const openTime = `${formData.openTime}:00`;
+      const closeTime = `${formData.closeTime}:00`;
+      
+      // Get owner ID from sessionStorage or use a default
+      const ownerId = sessionStorage.getItem('userId') || '2654c1af-0500-4170-b365-bf395e8a67de';
+      
+      // If editing an existing venue, call updateFieldAPI
+      if (venue) {
+        // Prepare data for update API call - using the correct format
+        const updateData = {
+          fieldId: venue.id,
+          typeFieldId: selectedSportTypeId, // Use the selected sport type ID
+          fieldName: formData.name.trim(),
+          location: formData.location.trim(),
+          normalPricePerHour: Number(formData.hourlyRate),
+          peakPricePerHour: Number(formData.peakRate),
+          openTime: openTime, // Send as string in HH:mm:ss format
+          closeTime: closeTime, // Send as string in HH:mm:ss format
+          description: formData.description.trim(),
+          images: formData.images,
+          available: formData.isActive
+        };
+        
+        console.log('Sending update data:', updateData);
+        
+        // Call the fieldService.updateFieldAPI method
+        await fieldService.updateFieldAPI(updateData);
+      } 
+      // If creating a new venue, call fieldService.createField
+      else {
+        // Prepare data for create API call - using the correct format
+        const createData = {
+          fieldName: formData.name.trim(),
+          typeFieldId: selectedSportTypeId, // Use the selected sport type ID
+          location: formData.location.trim(),
+          normalPricePerHour: Number(formData.hourlyRate),
+          peakPricePerHour: Number(formData.peakRate),
+          openTime: openTime, // Send as string in HH:mm:ss format
+          closeTime: closeTime, // Send as string in HH:mm:ss format
+          description: formData.description.trim(),
+          ownerId: ownerId,
+          images: formData.images,
+          available: formData.isActive
+        };
+        
+        console.log('Sending create data:', createData);
+        
+        // Call the fieldService.createField method
+        await fieldService.createField(createData);
+      }
+      
+      // For both create and update, still call the onSubmit callback for UI updates
       await onSubmit(formData);
-    } catch (error) {
+      
+      // Show success message
+      alert('Sân đã được lưu thành công!');
+    } catch (error: any) {
       console.error('Error submitting venue form:', error);
+      const errorMessage = error.message || 'Có lỗi xảy ra khi lưu sân. Vui lòng thử lại.';
+      setSubmitError(errorMessage);
+      alert(`Lỗi khi lưu sân: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Force update form data after sport types are loaded
+  React.useEffect(() => {
+    // Only run this after sport types are loaded and we have venue data
+    if (!loadingSportTypes && venue && sportTypes.length > 0) {
+      console.log('Force updating form data after sport types loaded:', venue);
+      
+      // Type assertion to access API response properties
+      const venueData = venue as any;
+      setFormData(prev => ({
+        ...prev,
+        name: venueData.fieldName || venueData.name || '',
+        description: venueData.description || '',
+        sport: venueData.typeFieldName || venueData.sport || '',
+        images: venueData.images || [],
+        hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
+        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
+        openTime: formatTimeForForm(venueData.openTime),
+        closeTime: formatTimeForForm(venueData.closeTime),
+        location: venueData.location || '',
+        isActive: venueData.available !== undefined ? venueData.available : (venueData.isActive ?? true)
+      }));
+      
+      // Also update selected sport type ID
+      const sportName = venueData.typeFieldName || venueData.sport;
+      if (sportName) {
+        const matchingSport = sportTypes.find(sport => sport.name === sportName);
+        if (matchingSport) {
+          console.log('Setting selected sport type after load:', matchingSport);
+          setSelectedSportTypeId(matchingSport.id);
+        }
+      }
+    }
+  }, [loadingSportTypes, venue, sportTypes]); // Dependencies: when sport types finish loading, venue changes, or sport types change
+
+  // Debug: Log current form data and venue
+  React.useEffect(() => {
+    console.log('=== DEBUG INFO ===');
+    console.log('Current venue prop:', venue);
+    console.log('Current form data:', formData);
+    console.log('Selected sport type ID:', selectedSportTypeId);
+    console.log('Sport types loaded:', !loadingSportTypes);
+    console.log('Sport types count:', sportTypes.length);
+  }, [venue, formData, selectedSportTypeId, loadingSportTypes, sportTypes]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -136,6 +416,13 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
 
       <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-6">
+          {/* Submit error message */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <p>{submitError}</p>
+            </div>
+          )}
+          
           <div>
             <ImageUpload
               images={formData.images}
@@ -185,29 +472,30 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
                   type="button"
                   onClick={() => setShowSportDropdown(!showSportDropdown)}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-left flex items-center justify-between"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || loadingSportTypes}
                 >
                   <span className={formData.sport ? 'text-gray-900' : 'text-gray-500'}>
-                    {formData.sport || 'Chọn loại thể thao'}
+                    {loadingSportTypes ? 'Đang tải...' : (formData.sport || 'Chọn loại thể thao')}
                   </span>
                   <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${
                     showSportDropdown ? 'rotate-180' : ''
                   }`} />
                 </button>
                 
-                {showSportDropdown && (
+                {showSportDropdown && !loadingSportTypes && (
                   <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
                     <div className="overflow-y-auto max-h-60 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                       {sportTypes.map((sport, index) => (
                         <button
-                          key={sport}
+                          key={sport.id}
                           type="button"
                           onClick={() => {
-                            setFormData(prev => ({ ...prev, sport }));
+                            setFormData(prev => ({ ...prev, sport: sport.name }));
+                            setSelectedSportTypeId(sport.id);
                             setShowSportDropdown(false);
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${
-                            formData.sport === sport ? 'bg-gray-100 font-medium' : ''
+                            formData.sport === sport.name ? 'bg-gray-100 font-medium' : ''
                           } ${
                             index === 0 ? 'rounded-t-lg' : ''
                           } ${
@@ -215,7 +503,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
                           }`}
                           disabled={isSubmitting}
                         >
-                          {sport}
+                          {sport.name}
                         </button>
                       ))}
                     </div>

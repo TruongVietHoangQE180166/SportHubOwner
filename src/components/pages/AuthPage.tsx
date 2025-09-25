@@ -1,25 +1,45 @@
 'use client';
 
-import React from "react";
+import React, { useEffect } from "react";
 import { MapPin, Shield, Users, TrendingUp } from "lucide-react";
 import FeatureCard from "../../components/auth/FeatureCard";
 import LoginForm from "../../components/auth/LoginForm";
 import { useAuthStore } from "../../stores/authStore";
 import { useRouter } from 'next/navigation';
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 const AuthPage: React.FC = () => {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user, checkAuthStatus } = useAuthStore();
   const { login, loading, error } = useAuthStore();
+
+  // Check authentication status when component mounts
+  useLayoutEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   useEffect(() => {
     if (isAuthenticated) {
       const redirectUrl = sessionStorage.getItem('redirectUrl') || '/dashboard';
       sessionStorage.removeItem('redirectUrl');
-      router.push(redirectUrl);
+      
+      // Check user role and redirect appropriately
+      if (user?.role === 'ADMIN') {
+        // If user is admin, redirect to admin dashboard
+        router.push('/admin-dashboard');
+      } else if (user?.role === 'OWNER') {
+        // If user is owner, redirect to owner dashboard
+        // Make sure we don't redirect to admin pages
+        if (redirectUrl.startsWith('/admin-')) {
+          router.push('/dashboard');
+        } else {
+          router.push(redirectUrl);
+        }
+      } else {
+        router.push(redirectUrl);
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative flex items-center justify-center p-4 overflow-hidden">

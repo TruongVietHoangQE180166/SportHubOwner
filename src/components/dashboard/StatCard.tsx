@@ -12,7 +12,7 @@ interface StatCardProps {
   };
   additionalInfo?: React.ReactNode;
   useCheckCircle?: boolean;
-  colorVariant?: 'green' | 'white' | 'black' | 'gray';
+  colorVariant?: 'green' | 'white' | 'black' | 'gray' | 'lightGreen' | 'darkGray';
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -34,6 +34,15 @@ const StatCard: React.FC<StatCardProps> = ({
       iconBg: 'bg-white/20 backdrop-blur-sm',
       iconColor: 'text-white'
     },
+    lightGreen: {
+      card: 'bg-gradient-to-br from-emerald-500 to-emerald-600 border-emerald-700 shadow-lg shadow-emerald-500/25',
+      title: 'text-emerald-50 font-semibold',
+      value: 'text-white font-bold',
+      icon: 'text-white',
+      trendLabel: 'text-emerald-50 font-medium',
+      iconBg: 'bg-white/20 backdrop-blur-sm',
+      iconColor: 'text-white'
+    },
     white: {
       card: 'bg-white border-gray-200 shadow-lg',
       title: 'text-gray-700 font-semibold',
@@ -50,6 +59,15 @@ const StatCard: React.FC<StatCardProps> = ({
       icon: 'text-gray-100',
       trendLabel: 'text-gray-200 font-medium',
       iconBg: 'bg-white/10 backdrop-blur-sm',
+      iconColor: 'text-white'
+    },
+    darkGray: {
+      card: 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-900 shadow-lg shadow-slate-700/25',
+      title: 'text-slate-100 font-semibold',
+      value: 'text-white font-bold',
+      icon: 'text-slate-100',
+      trendLabel: 'text-slate-200 font-medium',
+      iconBg: 'bg-white/15 backdrop-blur-sm',
       iconColor: 'text-white'
     },
     gray: {
@@ -81,8 +99,8 @@ const StatCard: React.FC<StatCardProps> = ({
         <div className="flex items-center mt-3 lg:mt-4 space-x-2">
           {useCheckCircle ? (
             <CheckCircle className={`w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0 ${
-              colorVariant === 'green' ? 'text-green-100' :
-              colorVariant === 'black' ? 'text-green-300' :
+              colorVariant === 'green' || colorVariant === 'lightGreen' ? 'text-green-100' :
+              colorVariant === 'black' || colorVariant === 'darkGray' ? 'text-green-300' :
               colorVariant === 'gray' ? 'text-green-600' :
               'text-green-500'
             }`} />
@@ -91,23 +109,23 @@ const StatCard: React.FC<StatCardProps> = ({
               <>
                 <TrendingUp className={`w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0 ${
                   trend.positive !== false 
-                    ? (colorVariant === 'green' ? 'text-green-100' :
-                       colorVariant === 'black' ? 'text-green-300' :
+                    ? (colorVariant === 'green' || colorVariant === 'lightGreen' ? 'text-green-100' :
+                       colorVariant === 'black' || colorVariant === 'darkGray' ? 'text-green-300' :
                        colorVariant === 'gray' ? 'text-green-600' :
                        'text-green-500')
-                    : (colorVariant === 'green' ? 'text-red-100' :
-                       colorVariant === 'black' ? 'text-red-300' :
+                    : (colorVariant === 'green' || colorVariant === 'lightGreen' ? 'text-red-100' :
+                       colorVariant === 'black' || colorVariant === 'darkGray' ? 'text-red-300' :
                        colorVariant === 'gray' ? 'text-red-600' :
                        'text-red-500')
                 }`} />
                 <span className={`text-xs lg:text-sm font-medium ${
                   trend.positive !== false 
-                    ? (colorVariant === 'green' ? 'text-green-100' :
-                       colorVariant === 'black' ? 'text-green-300' :
+                    ? (colorVariant === 'green' || colorVariant === 'lightGreen' ? 'text-green-100' :
+                       colorVariant === 'black' || colorVariant === 'darkGray' ? 'text-green-300' :
                        colorVariant === 'gray' ? 'text-green-700' :
                        'text-green-600')
-                    : (colorVariant === 'green' ? 'text-red-100' :
-                       colorVariant === 'black' ? 'text-red-300' :
+                    : (colorVariant === 'green' || colorVariant === 'lightGreen' ? 'text-red-100' :
+                       colorVariant === 'black' || colorVariant === 'darkGray' ? 'text-red-300' :
                        colorVariant === 'gray' ? 'text-red-700' :
                        'text-red-600')
                 }`}>

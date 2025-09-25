@@ -1,5 +1,4 @@
 import AuthGuard from '../../components/guards/AuthGuard'
-import RoleGuard from '../../components/guards/RoleGuard'
 import MainLayout from '../../components/pages/MainLayout'
 
 export default function ProtectedLayout({
@@ -7,13 +6,13 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode
 }) {
+  // This layout is no longer used as we have specific layouts for OWNER and ADMIN roles
+  // The role-specific layouts are in (owner)/layout.tsx and (admin)/layout.tsx
   return (
     <AuthGuard>
-      <RoleGuard allowedRoles={['admin', 'owner']}>
-        <MainLayout>
-          {children}
-        </MainLayout>
-      </RoleGuard>
+      <MainLayout>
+        {children}
+      </MainLayout>
     </AuthGuard>
   )
 }

@@ -1,13 +1,18 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useLayoutEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import ErrorPage from '../../components/pages/ErrorPage';
 import { usePathname } from 'next/navigation';
 
 const AuthGuard = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated, loading } = useAuthStore();
+  const { isAuthenticated, loading, checkAuthStatus } = useAuthStore();
   const pathname = usePathname(); 
+
+  // Check authentication status when component mounts
+  useLayoutEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {

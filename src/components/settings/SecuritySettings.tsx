@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useAuthStore } from '../../stores/authStore';
 import { Shield, Lock, AlertCircle, Eye, EyeOff, Save, X, Moon, Sun } from 'lucide-react';
 
 // Password strength indicator
@@ -39,6 +40,7 @@ const PasswordStrengthIndicator: React.FC<{ password: string }> = ({ password })
 };
 
 const SecuritySettings: React.FC = () => {
+  const { changePassword, loading, error, clearError } = useAuthStore();
   const [editingPassword, setEditingPassword] = useState(false);
   
   // Password visibility states
@@ -54,35 +56,72 @@ const SecuritySettings: React.FC = () => {
   
   const [securitySettings, setSecuritySettings] = useState({
     darkMode: false,
-    lastPasswordChange: "2 months ago"
   });
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords don't match!");
+      alert("Mật khẩu mới không khớp!");
       return;
     }
     if (!passwordData.currentPassword || !passwordData.newPassword) {
-      alert("Please fill in all password fields!");
+      alert("Vui lòng điền đầy đủ thông tin!");
       return;
     }
-    // Here you would call your password change API
-    alert('Password changed successfully!');
-    setEditingPassword(false);
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
-    setSecuritySettings(prev => ({
-      ...prev,
-      lastPasswordChange: "Just now"
-    }));
+    
+    try {
+      await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      alert('Đổi mật khẩu thành công!');
+      setEditingPassword(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+    } catch (err) {
+      // Error is handled by the store, but we can show a generic message if needed
+      console.error('Password change failed:', err);
+    }
   };
 
   return (
     <div className="bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
+        {/* Error Modal */}
+        {error && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-red-600">Lỗi</h3>
+                <button 
+                  onClick={clearError}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-gray-700 mb-6">
+                {error}
+              </p>
+              <button
+                onClick={clearError}
+                className="w-full bg-green-600 text-white py-2.5 rounded-xl hover:bg-green-700 transition-colors duration-200 font-medium"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
+              <p className="text-gray-700">Updating password...</p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-8">
 
           {/* Password & Authentication */}
@@ -103,7 +142,6 @@ const SecuritySettings: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 text-lg">Password</p>
-                      <p className="text-sm text-gray-500">Last changed {securitySettings.lastPasswordChange}</p>
                     </div>
                   </div>
                   <button
@@ -198,11 +236,20 @@ const SecuritySettings: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     onClick={handlePasswordChange}
-                    disabled={!passwordData.currentPassword || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword}
+                    disabled={loading || !passwordData.currentPassword || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword}
                     className="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
-                    <Save className="w-4 h-4" />
-                    Update Password
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Update Password
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => {
@@ -213,7 +260,8 @@ const SecuritySettings: React.FC = () => {
                         confirmPassword: ""
                       });
                     }}
-                    className="px-8 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors duration-200 flex items-center gap-2 font-medium"
+                    disabled={loading}
+                    className="px-8 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     <X className="w-4 h-4" />
                     Cancel

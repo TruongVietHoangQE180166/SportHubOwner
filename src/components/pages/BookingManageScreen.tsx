@@ -2,55 +2,44 @@
 import React, { useState, useEffect } from "react";
 import { Download } from "lucide-react";
 import BookingFilter from "../booking/BookingFilter";
-import BookingListView from "../booking/BookingListView";
-import BookingDetailView from "../booking/BookingDetailView";
+import OrderListView from "../booking/OrderListView";
+import OrderDetailView from "../booking/OrderDetailView";
 import { useBookingStore } from "../../stores/bookingStore";
-import { Booking } from "../../types";
+import { useAuthStore } from "../../stores/authStore";
+import { Order } from "../../types";
 
 const BookingManageScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
-  const { bookings, fetchBookings, updateBooking } = // Removed unused deleteBooking
-    useBookingStore();
+  const { orders, fetchOrders, loading, error } = useBookingStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    if (user?.id) {
+      fetchOrders(user.id);
+    }
+  }, [fetchOrders, user?.id]);
 
-  const filteredBookings = bookings.filter((booking) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesStatus =
-      statusFilter === "all" || booking.status === statusFilter;
+      statusFilter === "all" || order.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSearch =
-      booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.fieldName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDate = !selectedDate || booking.date === selectedDate;
+      order.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // Note: Date filtering is not applicable for orders as they don't have a direct date field
+    // We could filter by booking dates if needed
 
-    return matchesStatus && matchesSearch && matchesDate;
+    return matchesStatus && matchesSearch;
   });
 
-  const handleConfirmBooking = (bookingId: string) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (booking) {
-      updateBooking({ ...booking, status: "confirmed" });
-    }
-  };
-
-  const handleCancelBooking = (bookingId: string) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (booking) {
-      updateBooking({ ...booking, status: "cancelled" });
-    }
-  };
-
-  const handleViewBooking = (booking: Booking) => {
-    setViewingBooking(booking);
+  const handleViewOrder = (order: Order) => {
+    setViewingOrder(order);
   };
 
   const handleBackToList = () => {
-    setViewingBooking(null);
+    setViewingOrder(null);
   };
 
   const handleClearFilters = () => {
@@ -63,30 +52,47 @@ const BookingManageScreen: React.FC = () => {
     console.log("Exporting report...");
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Lỗi tải dữ liệu</h3>
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => user?.id && fetchOrders(user.id)}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
-      {/* Show booking detail view if viewing a booking */}
-      {viewingBooking ? (
-        <BookingDetailView
-          booking={viewingBooking}
+      {/* Show order detail view if viewing an order */}
+      {viewingOrder ? (
+        <OrderDetailView
+          order={viewingOrder}
           onBack={handleBackToList}
-          onConfirmBooking={(bookingId) => {
-            handleConfirmBooking(bookingId);
-            handleBackToList();
-          }}
-          onCancelBooking={(bookingId) => {
-            handleCancelBooking(bookingId);
-            handleBackToList();
-          }}
         />
       ) : (
         <>
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Quản Lý Đặt Sân</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Quản Lý Đơn Hàng</h1>
               <p className="text-gray-600">
-                Theo dõi và quản lý tất cả các đặt sân
+                Theo dõi và quản lý tất cả các đơn hàng
               </p>
             </div>
             <button
@@ -108,11 +114,9 @@ const BookingManageScreen: React.FC = () => {
             onSelectedDateChange={setSelectedDate}
             onClearFilters={handleClearFilters}
           />
-          <BookingListView
-            bookings={filteredBookings}
-            onViewBooking={handleViewBooking}
-            onConfirmBooking={handleConfirmBooking}
-            onCancelBooking={handleCancelBooking}
+          <OrderListView
+            orders={filteredOrders}
+            onViewOrder={handleViewOrder}
           />
         </>
       )}

@@ -27,6 +27,8 @@ export interface Venue {
   // Adding missing properties that are used in components and mock data
   capacity?: number;
   amenities?: string[];
+  // Adding properties that are used in API mapping
+  ownerPhone?: string;
 }
 
 export interface SubField {
@@ -37,4 +39,50 @@ export interface SubField {
   isActive: boolean;
   totalBookings: number;
   description?: string;
+}
+
+export interface SmallField {
+  id: string;
+  createdDate: string;
+  smallFiledName: string; // Note: This appears to be a typo in the API ("Filed" instead of "Field")
+  description: string;
+  capacity: string;
+  available: boolean;
+  booked: boolean;
+}
+
+export interface FieldBooking {
+  id: string;
+  userId: string;
+  fieldId: string;
+  fieldName: string;
+  smallField: SmallField;
+  avatar: string;
+  email: string;
+  startTime: string;
+  endTime: string;
+  totalPrice: number;
+  status: string;
+  createDate: string | null;
+}
+
+export interface BookingResponse {
+  message: {
+    messageCode: string;
+    messageDetail: string;
+  };
+  errors: null;
+  data: {
+    content: FieldBooking[];
+    request: {
+      page: number;
+      size: number;
+      sortRequest: {
+        direction: string;
+        field: string;
+      };
+    };
+    totalElement: number;
+  };
+  success: boolean;
 }

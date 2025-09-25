@@ -1,5 +1,5 @@
 export interface LoginCredentials {
-    email: string;
+    username: string;
     password: string;
   }
   
@@ -9,14 +9,14 @@ export interface LoginCredentials {
   
   export interface ResetPasswordCredentials {
     email: string;
-    resetCode: string;
+    otp: string;
     newPassword: string;
   }
   export interface AuthUser {
     id: string;
     email: string;
     password: string; 
-    role: 'admin' | 'user' | 'owner';
+    role: string;
     isActive: boolean;
   }
   export interface AuthState {

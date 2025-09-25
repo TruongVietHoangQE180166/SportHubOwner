@@ -56,6 +56,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
     setChartData(generateChartData(newPeriod));
   };
 
+  // Calculate revenue based on period
+  const calculatePeriodRevenue = () => {
+    // In a real app, this would come from props or API
+    // For now, we'll use the generated chart data
+    const total = chartData.reduce((sum, item) => sum + item.revenue, 0);
+    return total;
+  };
+
+  const periodRevenue = calculatePeriodRevenue();
+
   const getXAxisProps = () => {
     if (period === 'daily') {
       return {
@@ -74,6 +84,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         tick: { fill: '#6b7280', fontSize: 12 },
         interval: 14 
       };
+    }
+  };
+
+  // Get label for current period
+  const getPeriodLabel = () => {
+    switch (period) {
+      case 'daily': return '7 ngày';
+      case 'weekly': return '30 ngày';
+      case 'monthly': return '90 ngày';
+      default: return '';
     }
   };
 
@@ -132,7 +152,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
               labelStyle={{ color: '#111827', fontWeight: 600 }}
               contentStyle={{ 
                 borderRadius: '0.5rem',
-                border: '2px solid #10b981',
+                border: '2px solid #9ca3af',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                 backgroundColor: '#ffffff'
               }}
@@ -143,7 +163,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
               dataKey="revenue" 
               name="Doanh thu" 
               stroke="#10b981" 
-              activeDot={{ r: 8, fill: '#059669', stroke: '#ffffff', strokeWidth: 3 }} 
+              activeDot={{ r: 8, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }} 
               strokeWidth={3}
               dot={{ fill: '#10b981', strokeWidth: 2, stroke: '#ffffff', r: 4 }}
             />
@@ -151,18 +171,28 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         </ResponsiveContainer>
       </div>
       
+      {/* Period Revenue Cards with More Gray Tones */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-green-100 font-medium mb-1">Doanh thu hôm nay</p>
-          <p className="text-xl font-bold">{formatCurrency(dailyRevenue)}</p>
+        <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-lg p-4 text-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm font-medium mb-1">Doanh thu 7 ngày</p>
+          <p className="text-xl font-bold">{formatCurrency(
+            period === 'daily' ? periodRevenue : 
+            generateChartData('daily').reduce((sum, item) => sum + item.revenue, 0)
+          )}</p>
         </div>
-        <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-gray-300 font-medium mb-1">Doanh thu tháng này</p>
-          <p className="text-xl font-bold">{formatCurrency(monthlyRevenue)}</p>
+        <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-lg p-4 text-gray-900 shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm font-medium mb-1">Doanh thu 30 ngày</p>
+          <p className="text-xl font-bold">{formatCurrency(
+            period === 'weekly' ? periodRevenue : 
+            generateChartData('weekly').reduce((sum, item) => sum + item.revenue, 0)
+          )}</p>
         </div>
-        <div className="bg-gradient-to-br from-black to-gray-900 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-gray-300 font-medium mb-1">Tổng doanh thu</p>
-          <p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p>
+        <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+          <p className="text-sm text-gray-100 font-medium mb-1">Doanh thu 90 ngày</p>
+          <p className="text-xl font-bold">{formatCurrency(
+            period === 'monthly' ? periodRevenue : 
+            generateChartData('monthly').reduce((sum, item) => sum + item.revenue, 0)
+          )}</p>
         </div>
       </div>
     </div>

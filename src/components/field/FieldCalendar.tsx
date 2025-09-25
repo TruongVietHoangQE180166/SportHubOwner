@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Lock, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface TimeSlot {
   time: string;
-  status: 'available' | 'booked' | 'locked';
+  status: 'available' | 'booked';
+  booking?: any;
 }
 
 interface FieldCalendarProps {
@@ -13,9 +14,10 @@ interface FieldCalendarProps {
   venueOpenTime: string;
   venueCloseTime: string;
   onClose: () => void;
+  smallFieldId: string; // Add this prop
 }
 
-const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTime, venueCloseTime, onClose }) => {
+const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTime, venueCloseTime, onClose, smallFieldId }) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -190,57 +192,62 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTi
     setCurrentWeek(nextWeek);
   };
 
-  // State for tracking manually locked slots
-  const [lockedSlots, setLockedSlots] = useState<Set<string>>(new Set());
-  
-  // Generate stable demo bookings based on current week
-  const generateDemoBookings = (weekDates: Date[]) => {
-    const demoBookings = new Set<string>();
-    
-    // Add some demo bookings for the current week
-    // Monday - 2 bookings
-    demoBookings.add(`${weekDates[0].toDateString()}-08h-09h`);
-    demoBookings.add(`${weekDates[0].toDateString()}-14h-15h`);
-    
-    // Tuesday - 1 booking
-    demoBookings.add(`${weekDates[1].toDateString()}-10h-11h`);
-    
-    // Wednesday - 1 booking
-    demoBookings.add(`${weekDates[2].toDateString()}-16h-17h`);
-    
-    // Thursday - 1 booking
-    demoBookings.add(`${weekDates[3].toDateString()}-09h-10h`);
-    
-    // Friday - 1 booking
-    demoBookings.add(`${weekDates[4].toDateString()}-15h-16h`);
-    
-    // Saturday - 1 booking
-    demoBookings.add(`${weekDates[5].toDateString()}-11h-12h`);
-    
-    return demoBookings;
-  };
-  
-  // Get demo bookings for current week
-  const bookedSlots = generateDemoBookings(weekDates);
+  // State for bookings
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock booking data - now stable and consistent
-  const getTimeSlotStatus = (date: Date, timeSlot: string): TimeSlot => {
-    const slotKey = `${date.toDateString()}-${timeSlot}`;
+  // Fetch bookings when component mounts or smallFieldId changes
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!smallFieldId) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const { fieldService } = await import('../../services/fieldService');
+        const response = await fieldService.getSmallFieldBookings(smallFieldId);
+        setBookings(response.data.content);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        setBookings([]); // Set empty array on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [smallFieldId]);
+
+  // Update getTimeSlotStatus to include booking information
+  const getTimeSlotStatus = (date: Date, timeSlot: string): TimeSlot & { booking?: any } => {
+    // Convert timeSlot to start and end hours
+    const [startTime, endTime] = timeSlot.split('-');
+    const startHour = parseInt(startTime.replace('h', ''));
+    const endHour = parseInt(endTime.replace('h', ''));
     
-    // Check if manually locked
-    if (lockedSlots.has(slotKey)) {
+    // Create date objects for the slot
+    const slotStartDate = new Date(date);
+    slotStartDate.setHours(startHour, 0, 0, 0);
+    
+    const slotEndDate = new Date(date);
+    slotEndDate.setHours(endHour, 0, 0, 0);
+    
+    // Check if any booking overlaps with this slot
+    const booking = bookings.find(booking => {
+      const bookingStart = new Date(booking.startTime);
+      const bookingEnd = new Date(booking.endTime);
+      
+      // Check if there's an overlap
+      return slotStartDate < bookingEnd && slotEndDate > bookingStart;
+    });
+    
+    if (booking) {
       return {
         time: timeSlot,
-        status: 'locked'
-      };
-    }
-    
-    // Check if already booked (stable data)
-    if (bookedSlots.has(slotKey)) {
-      return {
-        time: timeSlot,
-        status: 'booked'
-        // No customer name needed
+        status: 'booked',
+        booking: booking
       };
     }
     
@@ -250,22 +257,9 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTi
     };
   };
 
-  // Handle slot click - toggle lock for available slots
+  // Handle slot click - remove locking functionality
   const handleSlotClick = (date: Date, timeSlot: string, currentStatus: TimeSlot['status']) => {
-    const slotKey = `${date.toDateString()}-${timeSlot}`;
-    
-    if (currentStatus === 'available') {
-      // Lock the slot
-      setLockedSlots(prev => new Set(prev).add(slotKey));
-    } else if (currentStatus === 'locked') {
-      // Unlock the slot
-      setLockedSlots(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(slotKey);
-        return newSet;
-      });
-    }
-    // Do nothing for booked slots
+    // Do nothing - remove locking functionality
   };
 
   const getWeekRange = () => {
@@ -273,6 +267,18 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTi
     const end = weekDates[6];
     return `${formatDate(start)} - ${formatDate(end)}`;
   };
+
+  // Update the loading state in the render
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+          <p className="mt-2 text-gray-600">Đang tải dữ liệu lịch...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
@@ -473,55 +479,72 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTi
                   {/* Time Slots for each day */}
                   {weekDates.map((date) => {
                     const slotStatus = getTimeSlotStatus(date, timeSlot);
-                    const isClickable = slotStatus.status === 'available' || slotStatus.status === 'locked';
+                    // Slots are not clickable since locking is removed
+                    const isClickable = false;
                     
                     let bgClass = 'bg-white';
                     let hoverClass = '';
                     let textColor = 'text-gray-400';
-                    let title = 'Còn trống - Click để khóa';
+                    let title = 'Còn trống';
+                    let bookingInfo = null;
                     
                     if (slotStatus.status === 'booked') {
-                      bgClass = 'bg-red-100';
-                      textColor = 'text-red-800';
-                      title = 'Đã đặt';
-                    } else if (slotStatus.status === 'locked') {
-                      bgClass = 'bg-yellow-100';
-                      hoverClass = 'hover:bg-yellow-200';
-                      textColor = 'text-yellow-800';
-                      title = 'Đã khóa - Click để mở khóa';
-                    } else {
-                      hoverClass = 'hover:bg-green-50';
-                      title = 'Còn trống - Click để khóa';
+                      // Determine background color based on booking status
+                      if (slotStatus.booking?.status?.toLowerCase() === 'completed') {
+                        bgClass = 'bg-red-100';  // Red for completed
+                        textColor = 'text-red-800';
+                      } else if (slotStatus.booking?.status?.toLowerCase() === 'pending') {
+                        bgClass = 'bg-yellow-100';  // Yellow for pending
+                        textColor = 'text-yellow-800';
+                      } else {
+                        bgClass = 'bg-red-100';  // Red for other statuses
+                        textColor = 'text-red-800';
+                      }
+                      title = `Đã đặt: ${slotStatus.booking?.email || 'Người dùng'}`;
+                      bookingInfo = slotStatus.booking;
                     }
                     
                     return (
                       <div
                         key={`${date.toISOString()}-${timeSlot}`}
-                        className={`p-2 border-r border-gray-200 last:border-r-0 transition-colors ${
+                        className={`p-2 border-r border-gray-200 last:border-r-0 transition-colors relative ${
                           bgClass
                         } ${
-                          isClickable ? `cursor-pointer ${hoverClass}` : 'cursor-not-allowed'
+                          isClickable ? `cursor-pointer ${hoverClass}` : 'cursor-default'
                         }`}
                         title={title}
-                        onClick={() => isClickable && handleSlotClick(date, timeSlot, slotStatus.status)}
                       >
-                        {slotStatus.status === 'booked' ? (
+                        {slotStatus.status === 'booked' && bookingInfo ? (
                           <div className="text-xs">
-                            <div className={`font-medium ${textColor}`}>Đã đặt</div>
-                          </div>
-                        ) : slotStatus.status === 'locked' ? (
-                          <div className="text-xs">
-                            <div className={`font-medium ${textColor} flex items-center space-x-1`}>
-                              <Lock className="w-3 h-3" />
-                              <span>Đã khóa</span>
+                            <div className={`font-medium ${textColor}`}>
+                              {slotStatus.booking?.status?.toLowerCase() === 'pending' ? 'Đang xử lý' : 
+                               slotStatus.booking?.status?.toLowerCase() === 'completed' ? 'Hoàn thành' : 'Đã đặt'}
                             </div>
-                            <div className="text-yellow-600 text-xs italic">Đặt trực tiếp</div>
+                            {bookingInfo.email && (
+                              <div className="mt-1 text-xs text-gray-600 truncate" title={bookingInfo.email}>
+                                {bookingInfo.email}
+                              </div>
+                            )}
+                            {bookingInfo.avatar && (
+                              <div className="mt-1 flex justify-center">
+                                <img 
+                                  src={bookingInfo.avatar} 
+                                  alt="User" 
+                                  className="w-6 h-6 rounded-full object-cover border border-gray-300"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className={`text-xs ${textColor}`}>Còn trống</div>
                         )}
                       </div>
                     );
+
                   })}
                 </div>
               ))}
@@ -538,17 +561,12 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({ subFieldName, venueOpenTi
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-red-100 border border-red-300 rounded shadow-sm"></div>
-              <span className="text-gray-700 font-medium">Đã đặt</span>
+              <span className="text-gray-700 font-medium">Đã đặt (Hoàn thành)</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded shadow-sm flex items-center justify-center">
-                <Lock className="w-2 h-2 text-yellow-600" />
-              </div>
-              <span className="text-gray-700 font-medium">Đã khóa (đặt trực tiếp)</span>
+              <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded shadow-sm"></div>
+              <span className="text-gray-700 font-medium">Đã đặt (Đang xử lý)</span>
             </div>
-          </div>
-          <div className="mt-2 text-center text-xs text-gray-600">
-            Click vào ô trống để khóa cho khách đặt trực tiếp. Click vào ô đã khóa để mở khóa.
           </div>
         </div>
     </div>

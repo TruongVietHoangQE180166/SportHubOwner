@@ -19,11 +19,13 @@ const Reviews: React.FC<ReviewsProps> = ({ reviews, averageRating, totalReviews 
   };
 
   const renderStars = (rating: number) => {
+    // Ensure rating is between 0 and 5
+    const clampedRating = Math.max(0, Math.min(5, rating || 0));
     return Array.from({ length: 5 }, (_, index) => (
       <Star
         key={index}
         className={`w-4 h-4 ${
-          index < rating
+          index < clampedRating
             ? 'text-yellow-400 fill-current'
             : 'text-gray-300'
         }`}
@@ -34,8 +36,9 @@ const Reviews: React.FC<ReviewsProps> = ({ reviews, averageRating, totalReviews 
   const getRatingDistribution = () => {
     const distribution = [0, 0, 0, 0, 0];
     reviews.forEach(review => {
-      if (review.rating >= 1 && review.rating <= 5) {
-        distribution[review.rating - 1]++;
+      const rating = review.rating || 0; // Use 0 if no rating provided
+      if (rating >= 1 && rating <= 5) {
+        distribution[rating - 1]++;
       }
     });
     return distribution.reverse(); // 5 stars first
@@ -53,7 +56,7 @@ const Reviews: React.FC<ReviewsProps> = ({ reviews, averageRating, totalReviews 
           <div className="text-center">
             <div className="text-3xl font-bold text-gray-900">{averageRating.toFixed(1)}</div>
             <div className="flex items-center justify-center space-x-1 mb-1">
-              {renderStars(Math.round(averageRating))}
+              {renderStars(averageRating)}
             </div>
             <div className="text-sm text-gray-600">{totalReviews || reviews.length} đánh giá</div>
           </div>
@@ -95,9 +98,21 @@ const Reviews: React.FC<ReviewsProps> = ({ reviews, averageRating, totalReviews 
               <div key={review.id} className="border-b border-gray-100 last:border-b-0 pb-4 last:pb-0">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-green-600" />
-                    </div>
+                    {review.userAvatar ? (
+                      <img 
+                        src={review.userAvatar} 
+                        alt={review.userName} 
+                        className="w-8 h-8 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-green-600" />
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="font-medium text-gray-900">{review.userName}</span>

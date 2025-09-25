@@ -1,15 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { create } from 'zustand';
-import { Booking } from '../types';
+import { Booking, Order } from '../types';
 import { bookingService } from '../services/bookingService';
+import { fieldService } from '../services/fieldService';
 
 interface BookingStore {
   bookings: Booking[];
+  orders: Order[];
   selectedBooking: Booking | null;
+  selectedOrder: Order | null;
   loading: boolean;
   error: string | null;
   
   fetchBookings: () => Promise<void>;
+  fetchOrders: (ownerId: string) => Promise<void>;
   fetchBooking: (id: string) => Promise<void>;
   updateBooking: (booking: Booking) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
@@ -18,7 +22,9 @@ interface BookingStore {
 
 export const useBookingStore = create<BookingStore>((set, get) => ({
   bookings: [],
+  orders: [],
   selectedBooking: null,
+  selectedOrder: null,
   loading: false,
   error: null,
 
@@ -32,6 +38,20 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       set({ 
         loading: false, 
         error: error instanceof Error ? error.message : 'Lỗi tải danh sách booking' 
+      });
+    }
+  },
+
+  fetchOrders: async (ownerId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const orders = await fieldService.getOwnerOrders(ownerId);
+      set({ orders: orders.data.content, loading: false });
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải danh sách đơn hàng' 
       });
     }
   },

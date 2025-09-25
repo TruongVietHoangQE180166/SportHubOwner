@@ -8,6 +8,7 @@ import {
   Play,
   Pause,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 
 interface SubFieldCardProps {
@@ -16,6 +17,7 @@ interface SubFieldCardProps {
   onEdit: () => void;
   onToggleStatus: () => void;
   onViewCalendar: () => void;
+  onDelete: () => void;
 }
 
 const SubFieldCard: React.FC<SubFieldCardProps> = ({
@@ -24,6 +26,7 @@ const SubFieldCard: React.FC<SubFieldCardProps> = ({
   onEdit,
   onToggleStatus,
   onViewCalendar,
+  onDelete,
 }) => {
 
   return (
@@ -69,14 +72,9 @@ const SubFieldCard: React.FC<SubFieldCardProps> = ({
         </div>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Users className="w-4 h-4" />
-          <span>{subField.capacity} người</span>
-        </div>
-        <div className="text-sm text-gray-600">
-          <span>Tổng đặt: {subField.totalBookings}</span>
-        </div>
+      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+        <Users className="w-4 h-4" />
+        <span>{subField.capacity} người</span>
       </div>
 
       <div className="flex space-x-2">
@@ -105,27 +103,15 @@ const SubFieldCard: React.FC<SubFieldCardProps> = ({
           <span className="text-sm">Sửa</span>
         </button>
         <button
-          onClick={onToggleStatus}
+          onClick={onDelete}
           disabled={!venue.isActive}
-          className={`flex-1 flex items-center justify-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-            !venue.isActive
-              ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-              : subField.isActive
-              ? 'text-white bg-red-500/90 hover:bg-red-400'
-              : 'text-black bg-gray-300 hover:bg-gray-200'
+          className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
+            !venue.isActive 
+              ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+              : 'text-white bg-red-500 hover:bg-red-600'
           }`}
         >
-          {subField.isActive ? (
-            <>
-              <Pause className="w-4 h-4" />
-              <span className="text-sm">Tạm dừng</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4" />
-              <span className="text-sm">Kích hoạt</span>
-            </>
-          )}
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>

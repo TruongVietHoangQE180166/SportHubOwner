@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Eye, Check, X } from 'lucide-react';
+import React from 'react';
+import { Eye } from 'lucide-react';
 import { Booking } from '../../types';
-import ConfirmationModal from './ConfirmationModal';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -36,60 +35,16 @@ const getStatusText = (status: string) => {
   }
 };
 
-
-
 interface BookingListViewProps {
   bookings: Booking[];
   onViewBooking: (booking: Booking) => void;
-  onConfirmBooking: (bookingId: string) => void;
-  onCancelBooking: (bookingId: string) => void;
+  // Removed onConfirmBooking and onCancelBooking props
 }
 
 const BookingListView: React.FC<BookingListViewProps> = ({
   bookings,
-  onViewBooking,
-  onConfirmBooking,
-  onCancelBooking
+  onViewBooking
 }) => {
-  const [confirmationModal, setConfirmationModal] = useState<{
-    isOpen: boolean;
-    type: 'confirm' | 'cancel';
-    bookingId: string;
-    customerName: string;
-    fieldName: string;
-  }>({ isOpen: false, type: 'confirm', bookingId: '', customerName: '', fieldName: '' });
-
-  const handleConfirmClick = (booking: Booking) => {
-    setConfirmationModal({
-      isOpen: true,
-      type: 'confirm',
-      bookingId: booking.id,
-      customerName: booking.customerName,
-      fieldName: booking.fieldName
-    });
-  };
-
-  const handleCancelClick = (booking: Booking) => {
-    setConfirmationModal({
-      isOpen: true,
-      type: 'cancel',
-      bookingId: booking.id,
-      customerName: booking.customerName,
-      fieldName: booking.fieldName
-    });
-  };
-
-  const handleModalConfirm = () => {
-    if (confirmationModal.type === 'confirm') {
-      onConfirmBooking(confirmationModal.bookingId);
-    } else {
-      onCancelBooking(confirmationModal.bookingId);
-    }
-  };
-
-  const handleModalClose = () => {
-    setConfirmationModal({ isOpen: false, type: 'confirm', bookingId: '', customerName: '', fieldName: '' });
-  };
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
       <div className="bg-gradient-to-br from-black via-gray-900 to-green-900 px-6 py-6 text-white relative overflow-hidden">
@@ -174,36 +129,7 @@ const BookingListView: React.FC<BookingListViewProps> = ({
                       Xem chi tiết
                     </button>
                     
-                    {/* Pending status: Show confirm and cancel buttons */}
-                    {booking.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleConfirmClick(booking)}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 hover:border-green-300 transition-all duration-200"
-                        >
-                          <Check className="w-3.5 h-3.5 mr-1.5" />
-                          Xác nhận
-                        </button>
-                        <button
-                          onClick={() => handleCancelClick(booking)}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200"
-                        >
-                          <X className="w-3.5 h-3.5 mr-1.5" />
-                          Hủy
-                        </button>
-                      </>
-                    )}
-                    
-                    {/* Confirmed status: Show cancel button only */}
-                    {booking.status === 'confirmed' && (
-                      <button
-                        onClick={() => handleCancelClick(booking)}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200"
-                      >
-                        <X className="w-3.5 h-3.5 mr-1.5" />
-                        Hủy đơn
-                      </button>
-                    )}
+                    {/* Removed confirm and cancel buttons */}
                   </div>
                 </td>
               </tr>
@@ -223,23 +149,6 @@ const BookingListView: React.FC<BookingListViewProps> = ({
           <p className="text-gray-600">Không có đặt sân nào phù hợp với bộ lọc hiện tại</p>
         </div>
       )}
-      
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={handleModalClose}
-        onConfirm={handleModalConfirm}
-        type={confirmationModal.type}
-        title={confirmationModal.type === 'confirm' ? 'Xác nhận đặt sân' : 'Hủy đặt sân'}
-        message={confirmationModal.type === 'confirm' 
-          ? 'Bạn có chắc chắn muốn xác nhận đơn đặt sân này không?'
-          : 'Bạn có chắc chắn muốn hủy đơn đặt sân này không?'
-        }
-        confirmText={confirmationModal.type === 'confirm' ? 'Xác nhận' : 'Hủy đơn'}
-        cancelText="Quay lại"
-        customerName={confirmationModal.customerName}
-        fieldName={confirmationModal.fieldName}
-      />
     </div>
   );
 };

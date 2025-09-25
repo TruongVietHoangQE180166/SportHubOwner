@@ -6,6 +6,15 @@ import { usePaymentStore } from '../../stores/paymentStore';
 import { useAuthStore } from '../../stores/authStore';
 import { UserProfile } from '../../types';
 
+interface SettingsProps {
+  user: UserProfile | null;
+  userLoading: boolean;
+  userError: string | null;
+  onUpdateUser: (updates: Partial<UserProfile>) => Promise<void>;
+  onUploadAvatar: (file: File) => Promise<string>; // Updated return type
+  clearUserError: () => void;
+}
+
 const SettingsPage: React.FC = () => {
   const { user } = useAuthStore();
   
@@ -36,8 +45,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleUploadAvatar = (file: File) => {
-    if (!user?.id) throw new Error("User ID is missing");
-    return uploadAvatar(user.id, file);
+    return uploadAvatar(file);
   };
 
   return (

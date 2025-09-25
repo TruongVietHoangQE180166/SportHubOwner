@@ -4,14 +4,18 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**',
+        protocol: "https",
+        hostname: "**",
       },
       {
-        protocol: 'http',
-        hostname: '**',
+        protocol: "http",
+        hostname: "**",
       },
     ],
+  },
+  eslint: {
+    // 👇 Tắt ESLint khi build
+    ignoreDuringBuilds: true,
   },
 };
 

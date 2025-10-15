@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import ForgotPasswordForm from "../../components/auth/ForgotPasswordForm";
 import { useAuthStore } from "../../stores/authStore";
 import { useRouter } from 'next/navigation';
+import ReverseAuthGuard from '../../components/guards/ReverseAuthGuard';
 
 const ForgotPasswordPage: React.FC = () => {
   const router = useRouter();
@@ -16,12 +17,6 @@ const ForgotPasswordPage: React.FC = () => {
   } = useAuthStore();
   
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
 
   useEffect(() => {
     // Clear any previous state when component mounts
@@ -47,12 +42,14 @@ const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <ForgotPasswordForm 
-      onSubmit={handleForgotPasswordSubmit} 
-      isLoading={loading} 
-      error={error}
-      successMessage={forgotPasswordSuccess}
-    />
+    <ReverseAuthGuard>
+      <ForgotPasswordForm 
+        onSubmit={handleForgotPasswordSubmit} 
+        isLoading={loading} 
+        error={error}
+        successMessage={forgotPasswordSuccess}
+      />
+    </ReverseAuthGuard>
   );
 };
 

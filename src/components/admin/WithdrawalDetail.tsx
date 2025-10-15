@@ -1,8 +1,9 @@
 // components/admin/WithdrawalDetail.tsx
 'use client';
 
-import React from 'react';
-import { ChevronLeft, CreditCard, Building, Hash, QrCode, DollarSign, Clock, Mail, User, TrendingDown, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, CreditCard, Building, Hash, QrCode, DollarSign, Clock, Mail, User, TrendingDown, Calendar, CheckCircle, XCircle, AlertCircle, Save } from 'lucide-react';
+import { fieldService } from '../../services/fieldService';
 
 interface Withdrawal {
   id: string;
@@ -39,9 +40,18 @@ interface WithdrawalDetailProps {
   withdrawal: Withdrawal;
   userProfile: UserProfile | null;
   onBack: () => void;
+  onUpdate?: () => void; // Add this callback function
 }
 
-const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userProfile, onBack }) => {
+const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userProfile, onBack, onUpdate }) => {
+  const [currentStatus, setCurrentStatus] = useState(withdrawal.status);
+  const [newStatus, setNewStatus] = useState(withdrawal.status);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { 
       style: 'currency', 
@@ -93,7 +103,50 @@ const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userPro
     }
   };
 
-  const statusConfig = getStatusConfig(withdrawal.status);
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setNewStatus(e.target.value);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!pendingAction || pendingAction === currentStatus) return;
+    
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+    setShowConfirmModal(false);
+    
+    try {
+      await fieldService.updateWithdrawalStatus(withdrawal.id, pendingAction);
+      setCurrentStatus(pendingAction);
+      setUpdateSuccess(true);
+      
+      // Notify parent component to refresh data
+      if (onUpdate) {
+        onUpdate();
+      }
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    } catch (error: any) {
+      setUpdateError(error.message || 'Failed to update withdrawal status');
+    } finally {
+      setIsUpdating(false);
+      setPendingAction(null);
+    }
+  };
+
+  const openConfirmModal = (action: 'APPROVED' | 'REJECTED') => {
+    setPendingAction(action);
+    setNewStatus(action);
+    setShowConfirmModal(true);
+  };
+
+  const closeConfirmModal = () => {
+    setShowConfirmModal(false);
+    setPendingAction(null);
+  };
+
+  const statusConfig = getStatusConfig(currentStatus);
   const StatusIcon = statusConfig.icon;
 
   return (
@@ -247,7 +300,7 @@ const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userPro
               
               <div className="text-right">
                 <span className={`px-4 py-2 inline-flex text-sm font-semibold rounded-full border ${statusConfig.color}`}>
-                  {withdrawal.status}
+                  {currentStatus}
                 </span>
                 <p className="text-xs text-gray-600 mt-2">Trạng thái hiện tại</p>
               </div>
@@ -391,10 +444,10 @@ const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userPro
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-xl border border-gray-200/50">
               <div className={`text-xl font-bold ${
-                withdrawal.status === 'APPROVED' ? 'text-green-600' : 
-                withdrawal.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                currentStatus === 'APPROVED' ? 'text-green-600' : 
+                currentStatus === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                {withdrawal.status}
+                {currentStatus}
               </div>
               <p className="text-xs text-gray-600 mt-1">Trạng thái</p>
             </div>
@@ -406,7 +459,147 @@ const WithdrawalDetail: React.FC<WithdrawalDetailProps> = ({ withdrawal, userPro
             </div>
           </div>
         </div>
+
+        {/* Status Update Section - Moved to the bottom */}
+        <div className="bg-gray-100 rounded-2xl p-6 shadow-xl border border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Cập nhật trạng thái yêu cầu</h3>
+              <p className="text-gray-600">Chọn hành động để cập nhật trạng thái rút tiền</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm">Trạng thái hiện tại:</span>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                currentStatus === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                currentStatus === 'REJECTED' ? 'bg-red-100 text-red-800 border border-red-200' :
+                'bg-yellow-100 text-yellow-800 border border-yellow-200'
+              }`}>
+                {currentStatus}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => openConfirmModal('REJECTED')}
+              disabled={isUpdating || currentStatus === 'REJECTED'}
+              className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-bold text-lg transition-all duration-200 ${
+                isUpdating || currentStatus === 'REJECTED'
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl active:scale-95 border border-red-300'
+              }`}
+            >
+              {isUpdating && newStatus === 'REJECTED' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-white rounded-full animate-spin"></div>
+                  Đang từ chối...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-6 h-6" />
+                  Từ chối yêu cầu
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={() => openConfirmModal('APPROVED')}
+              disabled={isUpdating || currentStatus === 'APPROVED'}
+              className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-bold text-lg transition-all duration-200 ${
+                isUpdating || currentStatus === 'APPROVED'
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl active:scale-95 border border-green-300'
+              }`}
+            >
+              {isUpdating && newStatus === 'APPROVED' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-white rounded-full animate-spin"></div>
+                  Đang chấp thuận...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-6 h-6" />
+                  Chấp thuận yêu cầu
+                </>
+              )}
+            </button>
+          </div>
+          
+          {/* Status Update Feedback */}
+          {updateSuccess && (
+            <div className="mt-6 p-4 bg-green-100 text-green-800 rounded-xl border border-green-200 flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 flex-shrink-0" />
+              <span className="font-medium">Cập nhật trạng thái thành công!</span>
+            </div>
+          )}
+          
+          {updateError && (
+            <div className="mt-6 p-4 bg-red-100 text-red-800 rounded-xl border border-red-200 flex items-center gap-3">
+              <XCircle className="w-6 h-6 flex-shrink-0" />
+              <span className="font-medium">{updateError}</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                pendingAction === 'APPROVED' 
+                  ? 'bg-green-100 text-green-600' 
+                  : 'bg-red-100 text-red-600'
+              }`}>
+                {pendingAction === 'APPROVED' ? (
+                  <CheckCircle className="w-8 h-8" />
+                ) : (
+                  <XCircle className="w-8 h-8" />
+                )}
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {pendingAction === 'APPROVED' ? 'Xác nhận chấp thuận' : 'Xác nhận từ chối'}
+              </h3>
+              
+              <p className="text-gray-600 mb-6">
+                {pendingAction === 'APPROVED' 
+                  ? 'Bạn có chắc chắn muốn chấp thuận yêu cầu rút tiền này?' 
+                  : 'Bạn có chắc chắn muốn từ chối yêu cầu rút tiền này?'}
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={closeConfirmModal}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Hủy
+                </button>
+                
+                <button
+                  onClick={handleUpdateStatus}
+                  disabled={isUpdating}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition-colors duration-200 ${
+                    pendingAction === 'APPROVED'
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  } ${isUpdating ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {isUpdating ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin"></div>
+                      Đang xử lý...
+                    </div>
+                  ) : (
+                    pendingAction === 'APPROVED' ? 'Chấp thuận' : 'Từ chối'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

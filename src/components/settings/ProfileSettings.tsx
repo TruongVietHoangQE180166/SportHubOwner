@@ -18,6 +18,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { UserProfile } from "../../types";
+import LoadingSpinner from "../ui/LoadingSpinner";
+import UniversalModal from "../ui/UniversalModal";
 
 interface ProfileSettingsProps {
   user: UserProfile;
@@ -475,59 +477,30 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       <div className="max-w-4xl mx-auto">
         {/* Error Modal for avatar upload errors */}
         {localError && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-red-600">Lỗi</h3>
-                <button
-                  onClick={() => setLocalError(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <p className="text-gray-700 mb-6">{localError}</p>
-              <button
-                onClick={() => setLocalError(null)}
-                className="w-full bg-green-600 text-white py-2.5 rounded-xl hover:bg-green-700 transition-colors duration-200 font-medium"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
+          <UniversalModal
+            isOpen={!!localError}
+            onClose={() => setLocalError(null)}
+            title="Lỗi"
+            message={localError}
+            type="error"
+          />
         )}
 
         {/* Error Modal for profile update errors */}
         {error && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-red-600">Lỗi</h3>
-                <button
-                  onClick={clearError}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <p className="text-gray-700 mb-6">{error}</p>
-              <button
-                onClick={clearError}
-                className="w-full bg-green-600 text-white py-2.5 rounded-xl hover:bg-green-700 transition-colors duration-200 font-medium"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
+          <UniversalModal
+            isOpen={!!error}
+            onClose={clearError}
+            title="Lỗi"
+            message={error}
+            type="error"
+          />
         )}
 
         {/* Loading Overlay */}
         {isSaving && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
-              <p className="text-gray-700">Đang tải dữ liệu...</p>
-            </div>
+            <LoadingSpinner size="md" message="Đang tải dữ liệu..." />
           </div>
         )}
 

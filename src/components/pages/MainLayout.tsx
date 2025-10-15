@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useLayoutEffect, ReactNode, useCallback } from 'react';
+import React, { useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Navigation from '../Navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserStore } from '../../stores/userStore';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -14,12 +15,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   
-  const { user, logout, checkAuthStatus } = useAuthStore();
-  const { profile, fetchProfile } = useUserStore();
+  const { user, logout, isAuthenticated, loading } = useAuthStore();
+  const { profile, fetchProfile, loading: profileLoading } = useUserStore();
   
-  useLayoutEffect(() => {
-    checkAuthStatus();
-  }, [checkAuthStatus]);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   
   const getActiveTab = useCallback((): string => {
     if (pathname.startsWith('/admin-dashboard')) return 'admin-dashboard';
@@ -40,23 +39,46 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     setActiveTab(getActiveTab());
   }, [getActiveTab]);
   
+  // Fetch profile khi có user và chưa có profile
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && isAuthenticated && !profile && !profileLoading) {
       fetchProfile(user.id);
     }
-  }, [user?.id, fetchProfile]);
+  }, [user?.id, isAuthenticated, profile, profileLoading, fetchProfile]);
   
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     router.push(`/${tab}`);
   };
   
-  const handleLogout = () => {
-    // Clear redirectUrl from sessionStorage on logout
-    sessionStorage.removeItem('redirectUrl');
-    logout();
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      
+      // Start logout process
+      await logout();
+      
+      // Show loading spinner for 1.5 seconds
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Navigate to login page
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setLogoutLoading(false);
+    }
   };
   
+  // Đang loading auth -> hiển thị loading
+  if (loading || logoutLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Đang tải..." />
+      </div>
+    );
+  }
+  
+  // Không có user -> return null (AuthGuard sẽ redirect)
   if (!user) {
     return null;
   }

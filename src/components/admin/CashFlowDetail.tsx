@@ -174,7 +174,7 @@ const CashFlowDetail: React.FC<CashFlowDetailProps> = ({ cashFlow, onBack }) => 
                     <CreditCard className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900">Số dư tài khoản</h3>
+                    <h3 className="text-base font-bold text-gray-900">Tổng doanh thu</h3>
                     <p className="text-xs text-gray-600">Account Balance</p>
                   </div>
                 </div>
@@ -187,7 +187,7 @@ const CashFlowDetail: React.FC<CashFlowDetailProps> = ({ cashFlow, onBack }) => 
                 <p className="text-2xl font-bold text-gray-800 mb-1">
                   {formatCurrency(cashFlow.balance)}
                 </p>
-                <p className="text-xs text-gray-600">Tổng số dư hiện tại</p>
+                <p className="text-xs text-gray-600">Tổng doanh thu hiện tại</p>
               </div>
             </div>
 
@@ -238,7 +238,7 @@ const CashFlowDetail: React.FC<CashFlowDetailProps> = ({ cashFlow, onBack }) => 
               <div className="text-xl font-bold text-gray-800">
                 {formatCurrency(cashFlow.balance)}
               </div>
-              <p className="text-xs text-gray-600 mt-1">Tổng số dư</p>
+              <p className="text-xs text-gray-600 mt-1">Tổng doanh thu</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-xl">
               <div className="text-xl font-bold text-black">

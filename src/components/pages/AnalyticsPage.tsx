@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useAnalyticsStore } from '../../stores/analyticsStore';
+import { useAuthStore } from '../../stores/authStore';
 import AnalyticsHeader from '../../components/analytics/AnalyticsHeader';
 import RevenueCards from '../../components/analytics/RevenueCards';
 import KeyMetrics from '../../components/analytics/KeyMetrics';
@@ -11,6 +12,7 @@ import FieldPerformance from '../analytics/FieldPerformance';
 
 const AnalyticsPage: React.FC = () => {
   const { analytics, fetchAnalytics } = useAnalyticsStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchAnalytics();
@@ -43,12 +45,13 @@ const AnalyticsPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <PeakHours analytics={analytics} />
       </div>
-      {/* Sửa cách truyền props cho RevenueChart */}
+      {/* Pass userId prop to RevenueChart */}
       <RevenueChart 
         dailyRevenue={analytics.dailyRevenue}
         monthlyRevenue={analytics.monthlyRevenue}
         totalRevenue={analytics.totalRevenue}
         formatCurrency={formatCurrency}
+        userId={user?.id || ''}
       />
       <FieldPerformance fields={[]} analytics={analytics} />
     </div>

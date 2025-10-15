@@ -54,7 +54,6 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
         sport: venueData.typeFieldName || venueData.sport || '',
         images: venueData.images || [],
         hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
-        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
         openTime: formatTimeForForm(venueData.openTime),
         closeTime: formatTimeForForm(venueData.closeTime),
         location: venueData.location || '',
@@ -67,7 +66,6 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
       sport: '',
       images: [] as string[],
       hourlyRate: 0,
-      peakRate: 0,
       openTime: '06:00',
       closeTime: '22:00',
       location: '',
@@ -87,7 +85,6 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
         sport: venueData.typeFieldName || venueData.sport || '',
         images: venueData.images || [],
         hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
-        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
         openTime: formatTimeForForm(venueData.openTime),
         closeTime: formatTimeForForm(venueData.closeTime),
         location: venueData.location || '',
@@ -214,6 +211,27 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
     }
   };
 
+  // Format price data for display
+  const formatPriceForDisplay = (price: number) => {
+    return price === 0 ? '' : price.toString();
+  };
+
+  // Handle price input change with leading zero prevention
+  const handlePriceChange = (value: string) => {
+    // Remove any non-digit characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    // Prevent leading zeros (except for the case where the value is just "0")
+    let formattedValue = numericValue;
+    if (numericValue.length > 1 && numericValue[0] === '0') {
+      formattedValue = numericValue.replace(/^0+/, '') || '0';
+    }
+    
+    // Convert to number and update state
+    const numberValue = formattedValue === '' ? 0 : Number(formattedValue);
+    setFormData(prev => ({ ...prev, hourlyRate: numberValue }));
+  };
+
   // Handle click outside to close dropdown
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -247,13 +265,9 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
       return;
     }
     
-    if (formData.hourlyRate <= 0) {
+    // Updated validation for price fields
+    if (formData.hourlyRate <= 0 || isNaN(formData.hourlyRate)) {
       alert('Giá thường phải lớn hơn 0');
-      return;
-    }
-    
-    if (formData.peakRate <= 0) {
-      alert('Giá cao điểm phải lớn hơn 0');
       return;
     }
     
@@ -283,6 +297,9 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
     
     setIsSubmitting(true);
     try {
+      // Calculate peak rate as hourly rate + 20%
+      const peakRate = Math.round(formData.hourlyRate * 1.2);
+      
       // Format time as HH:mm:ss strings
       const openTime = `${formData.openTime}:00`;
       const closeTime = `${formData.closeTime}:00`;
@@ -299,7 +316,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
           fieldName: formData.name.trim(),
           location: formData.location.trim(),
           normalPricePerHour: Number(formData.hourlyRate),
-          peakPricePerHour: Number(formData.peakRate),
+          peakPricePerHour: peakRate, // Automatically calculated peak rate
           openTime: openTime, // Send as string in HH:mm:ss format
           closeTime: closeTime, // Send as string in HH:mm:ss format
           description: formData.description.trim(),
@@ -320,7 +337,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
           typeFieldId: selectedSportTypeId, // Use the selected sport type ID
           location: formData.location.trim(),
           normalPricePerHour: Number(formData.hourlyRate),
-          peakPricePerHour: Number(formData.peakRate),
+          peakPricePerHour: peakRate, // Automatically calculated peak rate
           openTime: openTime, // Send as string in HH:mm:ss format
           closeTime: closeTime, // Send as string in HH:mm:ss format
           description: formData.description.trim(),
@@ -336,7 +353,12 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
       }
       
       // For both create and update, still call the onSubmit callback for UI updates
-      await onSubmit(formData);
+      // Create a new object with peakRate for onSubmit callback
+      const venueDataWithPeakRate = {
+        ...formData,
+        peakRate: peakRate
+      };
+      await onSubmit(venueDataWithPeakRate);
       
       // Show success message
       alert('Sân đã được lưu thành công!');
@@ -365,7 +387,6 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
         sport: venueData.typeFieldName || venueData.sport || '',
         images: venueData.images || [],
         hourlyRate: venueData.normalPricePerHour || venueData.hourlyRate || 0,
-        peakRate: venueData.peakPricePerHour || venueData.peakRate || 0,
         openTime: formatTimeForForm(venueData.openTime),
         closeTime: formatTimeForForm(venueData.closeTime),
         location: venueData.location || '',
@@ -528,36 +549,19 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSubmit, onCancel }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Giá Thường (VNĐ/giờ)
-              </label>
-              <input
-                type="number"
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: Number(e.target.value) }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-                min="0"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Giá Cao Điểm (VNĐ/giờ)
-              </label>
-              <input
-                type="number"
-                value={formData.peakRate}
-                onChange={(e) => setFormData(prev => ({ ...prev, peakRate: Number(e.target.value) }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-                min="0"
-                disabled={isSubmitting}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Giá Thường (VNĐ/giờ)
+            </label>
+            <input
+              type="text"
+              value={formatPriceForDisplay(formData.hourlyRate)}
+              onChange={(e) => handlePriceChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Nhập giá thường"
+              required
+              disabled={isSubmitting}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

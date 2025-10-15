@@ -5,6 +5,7 @@ import ResetPasswordForm from "../../components/auth/ResetPasswordForm";
 import { useAuthStore } from "../../stores/authStore";
 import { useRouter } from 'next/navigation';
 import { ResetPasswordCredentials } from "../../types";
+import ReverseAuthGuard from '../../components/guards/ReverseAuthGuard';
 
 const ResetPasswordPage: React.FC = () => {
   const router = useRouter();
@@ -22,10 +23,6 @@ const ResetPasswordPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-    
     // Client-side only: get email from URL params
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -40,7 +37,7 @@ const ResetPasswordPage: React.FC = () => {
         setResetEmail(emailFromStorage);
       }
     }
-  }, [isAuthenticated, router]);
+  }, []);
 
   useEffect(() => {
     // Clear any previous state when component mounts
@@ -89,28 +86,32 @@ const ResetPasswordPage: React.FC = () => {
   // If we have a success message, we want to show it instead of the form
   if (successMessage) {
     return (
-      <ResetPasswordForm 
-        onSubmit={handleResetPassword}
-        onResendOTP={handleResendOTP}
-        isLoading={false}
-        isResending={isResending}
-        error={null}
-        successMessage={successMessage}
-        email={resetEmail}
-      />
+      <ReverseAuthGuard>
+        <ResetPasswordForm 
+          onSubmit={handleResetPassword}
+          onResendOTP={handleResendOTP}
+          isLoading={false}
+          isResending={isResending}
+          error={null}
+          successMessage={successMessage}
+          email={resetEmail}
+        />
+      </ReverseAuthGuard>
     );
   }
 
   return (
-    <ResetPasswordForm 
-      onSubmit={handleResetPassword}
-      onResendOTP={handleResendOTP}
-      isLoading={loading}
-      isResending={isResending}
-      error={error}
-      successMessage={successMessage}
-      email={resetEmail}
-    />
+    <ReverseAuthGuard>
+      <ResetPasswordForm 
+        onSubmit={handleResetPassword}
+        onResendOTP={handleResendOTP}
+        isLoading={loading}
+        isResending={isResending}
+        error={error}
+        successMessage={successMessage}
+        email={resetEmail}
+      />
+    </ReverseAuthGuard>
   );
 };
 

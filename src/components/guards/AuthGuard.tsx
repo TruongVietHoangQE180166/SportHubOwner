@@ -1,37 +1,51 @@
 'use client';
 
-import { ReactNode, useEffect, useLayoutEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
-import ErrorPage from '../../components/pages/ErrorPage';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
-const AuthGuard = ({ children }: { children: ReactNode }) => {
+interface AuthGuardProps {
+  children: ReactNode;
+}
+
+const AuthGuard = ({ children }: AuthGuardProps) => {
   const { isAuthenticated, loading, checkAuthStatus } = useAuthStore();
-  const pathname = usePathname(); 
+  const router = useRouter();
+  const pathname = usePathname();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
-  // Check authentication status when component mounts
-  useLayoutEffect(() => {
+  useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      sessionStorage.setItem('redirectUrl', pathname);
+    if (!loading && typeof window !== 'undefined') {
+      if (!isAuthenticated) {
+        // Chỉ redirect nếu chưa ở trang login
+        if (pathname !== '/login') {
+          setShouldRedirect(true);
+          router.push('/login');
+        }
+      }
     }
-  }, [isAuthenticated, loading, pathname]);
+  }, [isAuthenticated, loading, router, pathname]);
 
+  // Đang kiểm tra authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Đang kiểm tra đăng nhập...
+        <LoadingSpinner message="Đang kiểm tra đăng nhập..." />
       </div>
     );
   }
 
+  // Chưa đăng nhập -> chuyển về login (không hiện error page)
   if (!isAuthenticated) {
-    return <ErrorPage errorType="unauthorized" />;
+    return null;
   }
 
+  // Đã đăng nhập -> cho phép truy cập
   return <>{children}</>;
 };
 

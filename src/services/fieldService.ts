@@ -1,5 +1,5 @@
 import { Venue as Field, BookingResponse, FieldBooking } from '../types';
-import { OrderResponse } from '../types/index';
+import { OrderResponse, StatisticalResponse } from '../types/index';
 import { mockFields } from '../data/mockFields';
 import { api } from '../config/api.config';
 
@@ -156,6 +156,12 @@ interface Withdrawal {
   createdDate: string;
 }
 
+// Interface for withdrawal request
+interface WithdrawalRequest {
+  description: string;
+  amount: number;
+}
+
 interface WithdrawalResponse {
   message: {
     messageCode: string;
@@ -186,7 +192,22 @@ interface CashFlow {
   amountAvailable: number;
   balance: number;
   createdDate: string;
-  statisticalResponses: any | null;
+  statisticalResponses: StatisticalResponse[] | null;
+}
+
+interface CashFlowDailyResponse {
+  id: string;
+  userId: string;
+  email: string;
+  role: string;
+  amountAvailable: number;
+  balance: number;
+  createdDate: string;
+  statisticalResponses: StatisticalResponse[] | null;
+  dailyData: {
+    date: string;
+    amount: number;
+  }[];
 }
 
 interface CashFlowResponse {
@@ -627,6 +648,19 @@ class FieldService {
     }
   }
 
+  async createWithdrawal(withdrawalData: WithdrawalRequest): Promise<WithdrawalResponse> {
+    try {
+      const response = await api.post<WithdrawalResponse>('/api/withdrawal', withdrawalData);
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể tạo yêu cầu rút tiền. Vui lòng thử lại sau.');
+    }
+  }
+
   async getAllWithdrawal(
     page: number = 1,
     size: number = 1000,
@@ -636,6 +670,32 @@ class FieldService {
     try {
       const response = await api.get<WithdrawalResponse>('/api/withdrawal', {
         params: {
+          page,
+          size,
+          sort: `${field},${direction}`
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy danh sách yêu cầu rút tiền. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getAllWithdrawalUser(
+    userId: string,
+    page: number = 1,
+    size: number = 1000,
+    field: string = 'createdDate',
+    direction: string = 'desc'
+  ): Promise<WithdrawalResponse> {
+    try {
+      const response = await api.get<WithdrawalResponse>('/api/withdrawal', {
+        params: {
+          userId,
           page,
           size,
           sort: `${field},${direction}`
@@ -672,6 +732,137 @@ class FieldService {
         throw new Error(error.response.data.message.messageDetail);
       }
       throw new Error('Không thể lấy danh sách giao dịch. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getCashFlowUser(
+    userId: string,
+    page: number = 1,
+    size: number = 1000,
+    field: string = 'createdDate',
+    direction: string = 'desc'
+  ): Promise<CashFlowResponse> {
+    try {
+      const response = await api.get<CashFlowResponse>('/api/cash-flow', {
+        params: {
+          userId,
+          page,
+          size,
+          sort: `${field},${direction}`
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy danh sách giao dịch. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getCashFlowUserBy7Day(
+    cashFlowId: string,
+    day: 7
+  ): Promise<CashFlowDailyResponse> {
+    try {
+      const response = await api.get<CashFlowDailyResponse>('/api/cash-flow/{cashFlowId}', {
+        params: {
+          day,
+          cashFlowId,
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy dữ liệu giao dịch theo ngày. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getCashFlowUserBy30Day(
+    cashFlowId: string,
+    day: 30
+  ): Promise<CashFlowDailyResponse> {
+    try {
+      const response = await api.get<CashFlowDailyResponse>('/api/cash-flow/{cashFlowId}', {
+        params: {
+          day,
+          cashFlowId,
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy dữ liệu giao dịch theo ngày. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getCashFlowUserBy90Day(
+    cashFlowId: string,
+    day: 90
+  ): Promise<CashFlowDailyResponse> {
+    try {
+      const response = await api.get<CashFlowDailyResponse>('/api/cash-flow/{cashFlowId}', {
+        params: {
+          day,
+          cashFlowId,
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy dữ liệu giao dịch theo ngày. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getCashFlowUserBy1Day(
+    cashFlowId: string,
+    day: 1
+  ): Promise<CashFlowDailyResponse> {
+    try {
+      const response = await api.get<CashFlowDailyResponse>('/api/cash-flow/{cashFlowId}', {
+        params: {
+          day,
+          cashFlowId,
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy dữ liệu giao dịch theo ngày. Vui lòng thử lại sau.');
+    }
+  }
+
+  async updateWithdrawalStatus(
+    withdrawalId: string,
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  ): Promise<WithdrawalResponse> {
+    try {
+      const response = await api.put<WithdrawalResponse>('/api/withdrawal', null, {
+        params: {
+          withdrawalId,
+          status
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể cập nhật trạng thái yêu cầu rút tiền. Vui lòng thử lại sau.');
     }
   }
 

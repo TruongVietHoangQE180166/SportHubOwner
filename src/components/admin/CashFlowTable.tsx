@@ -175,7 +175,7 @@ const CashFlowTable: React.FC<{ onDetailToggle?: (show: boolean) => void }> = ({
                   <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Vai trò</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Số tiền khả dụng</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Số dư</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Tổng doanh thu</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Ngày tạo</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-green-600 uppercase tracking-wider">Actions</th>
                 </tr>

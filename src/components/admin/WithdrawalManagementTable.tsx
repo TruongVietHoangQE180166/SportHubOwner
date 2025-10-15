@@ -105,6 +105,12 @@ const WithdrawalManagementTable: React.FC<{ onDetailToggle?: (show: boolean) => 
     setSelectedUserProfile(null);
   };
 
+  // Callback function to refresh data after status update
+  const handleWithdrawalUpdate = () => {
+    // Refresh the data
+    fetchData();
+  };
+
   // Show withdrawal detail view when a withdrawal is selected
   if (selectedWithdrawal) {
     return (
@@ -112,6 +118,7 @@ const WithdrawalManagementTable: React.FC<{ onDetailToggle?: (show: boolean) => 
         withdrawal={selectedWithdrawal} 
         userProfile={selectedUserProfile} 
         onBack={handleBackToList} 
+        onUpdate={handleWithdrawalUpdate} // Pass the callback function
       />
     );
   }

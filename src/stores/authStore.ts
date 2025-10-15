@@ -58,8 +58,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     
     try {
       await authService.logout();
-      // Clear redirectUrl from sessionStorage on logout
-      sessionStorage.removeItem('redirectUrl');
       set({ 
         isAuthenticated: false, 
         user: null, 

@@ -226,12 +226,6 @@ const VenueCard: React.FC<VenueCardProps> = ({
                   <span>{formatCurrency(venue.hourlyRate || 0)}/giờ</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <DollarSign className="w-4 h-4" />
-                  <span className="text-orange-600 font-medium">
-                    {formatCurrency(venue.peakRate || 0)}/giờ (giờ cao điểm)
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Star className="w-4 h-4 text-yellow-500" />
                   <span>
                     {venue.rating?.toFixed(1) || '0.0'} sao ({venue.totalBookings || 0} đặt sân)

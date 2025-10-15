@@ -1,9 +1,10 @@
 'use client'
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAnalyticsStore } from '../../stores/analyticsStore';
 import { useFieldStore } from '../../stores/fieldStore';
 import { useUserStore } from '../../stores/userStore';
 import { useAuthStore } from '../../stores/authStore';
+import { fieldService } from '../../services/fieldService';
 
 // Import các component từ Analytics
 import PeakHours from '../analytics/PeakHours';
@@ -15,6 +16,7 @@ import StatCard from '../dashboard/StatCard';
 import PopularFields from '../dashboard/PopularFields';
 // Import component mới thay cho WithdrawableAmount cũ
 import WithdrawalDashboard from '../dashboard/WithdrawableAmount';
+import LoadingSpinner from '../ui/LoadingSpinner';
 import {
   DollarSign,
   Calendar,
@@ -22,22 +24,181 @@ import {
   TrendingUp as TrendingUpIcon,
   Users
 } from 'lucide-react';
+import { CashFlow, Withdrawal, StatisticalResponse } from '../../types';
+
+// Define the WithdrawalData interface to match the component's expectations
+interface WithdrawalData {
+  id: string;
+  date: string;
+  amount: number;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
+  method: string;
+}
 
 const DashboardPage: React.FC = () => {
   const { analytics, loading: analyticsLoading, fetchAnalytics } = useAnalyticsStore();
-  const { fields, loading: fieldsLoading, fetchFields } = useFieldStore();
+  const { fields, loading: fieldsLoading, fetchFields, getCashFlowByUser, getWithdrawalHistoryByUser } = useFieldStore();
   const { profile, loading: profileLoading, fetchProfile } = useUserStore();
   const { user } = useAuthStore();
+  const [cashFlowData, setCashFlowData] = useState<CashFlow[]>([]);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalData[]>([]);
+  const [withdrawableAmount, setWithdrawableAmount] = useState<number>(0);
+  const [accountBalance, setAccountBalance] = useState<number>(0);
+  const [cashFlowLoading, setCashFlowLoading] = useState<boolean>(false);
+  const [dailyRevenue, setDailyRevenue] = useState<number>(0);
+  const [monthlyRevenue, setMonthlyRevenue] = useState<number>(0);
+  const lastFetchedUserId = useRef<string | null>(null);
+
+  const fetchCashFlowData = useCallback(async (userId: string) => {
+    setCashFlowLoading(true);
+    try {
+      const cashFlow = await getCashFlowByUser(userId);
+      setCashFlowData(cashFlow);
+      
+      // Calculate withdrawable amount and balance from cash flow data
+      if (cashFlow.length > 0) {
+        const latestCashFlow = cashFlow[0]; // Assuming the first item is the most recent
+        setWithdrawableAmount(latestCashFlow.amountAvailable || 0);
+        setAccountBalance(latestCashFlow.balance || 0);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching cash flow data:', error);
+    } finally {
+      setCashFlowLoading(false);
+    }
+  }, [getCashFlowByUser]);
+
+  const fetchRevenueData = useCallback(async (cashFlowId: string) => {
+    try {
+      // Fetch daily revenue (1 day data)
+      const dailyDataResponse: any = await fieldService.getCashFlowUserBy1Day(cashFlowId, 1);
+      if (dailyDataResponse && dailyDataResponse.data && dailyDataResponse.data.statisticalResponses && dailyDataResponse.data.statisticalResponses.length > 0) {
+        // For 1 day, we take the amountForDay of the most recent day (last entry)
+        const latestDayData = dailyDataResponse.data.statisticalResponses[dailyDataResponse.data.statisticalResponses.length - 1];
+        const todayRevenue = latestDayData.amountForDay || 0;
+        setDailyRevenue(todayRevenue);
+      } else if (dailyDataResponse && dailyDataResponse.statisticalResponses && dailyDataResponse.statisticalResponses.length > 0) {
+        // Alternative structure where response is directly the data object
+        const latestDayData = dailyDataResponse.statisticalResponses[dailyDataResponse.statisticalResponses.length - 1];
+        const todayRevenue = latestDayData.amountForDay || 0;
+        setDailyRevenue(todayRevenue);
+      } else {
+        setDailyRevenue(0);
+      }
+
+      // Fetch monthly revenue (30 day data)
+      const monthlyDataResponse: any = await fieldService.getCashFlowUserBy30Day(cashFlowId, 30);
+      if (monthlyDataResponse && monthlyDataResponse.data && monthlyDataResponse.data.statisticalResponses) {
+        // For 30 days, we sum up all the amountForDay values
+        const monthRevenue = monthlyDataResponse.data.statisticalResponses.reduce((sum: number, item: StatisticalResponse) => sum + (item.amountForDay || 0), 0);
+        setMonthlyRevenue(monthRevenue);
+      } else if (monthlyDataResponse && monthlyDataResponse.statisticalResponses) {
+        // Alternative structure where response is directly the data object
+        const monthRevenue = monthlyDataResponse.statisticalResponses.reduce((sum: number, item: StatisticalResponse) => sum + (item.amountForDay || 0), 0);
+        setMonthlyRevenue(monthRevenue);
+      } else {
+        setMonthlyRevenue(0);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching revenue data:', error);
+      // Fallback to analytics data if API fails
+      if (analytics) {
+        setDailyRevenue(analytics.dailyRevenue);
+        setMonthlyRevenue(analytics.monthlyRevenue);
+      }
+    }
+  }, [analytics]);
+
+  const fetchWithdrawalHistory = useCallback(async (userId: string) => {
+    try {
+      const withdrawals = await getWithdrawalHistoryByUser(userId);
+      
+      // Map the Withdrawal objects to WithdrawalData objects
+      const mappedWithdrawals: WithdrawalData[] = withdrawals.map(withdrawal => {
+        // Ensure status is one of the expected values
+        let status: 'APPROVED' | 'PENDING' | 'REJECTED' = 'PENDING';
+        switch (withdrawal.status.toUpperCase()) {
+          case 'APPROVED':
+            status = 'APPROVED';
+            break;
+          case 'REJECTED':
+            status = 'REJECTED';
+            break;
+          case 'PENDING':
+          default:
+            status = 'PENDING';
+            break;
+        }
+        
+        return {
+          id: withdrawal.id,
+          date: withdrawal.createdDate,
+          amount: withdrawal.amount,
+          status: status,
+          method: 'Chuyển khoản ngân hàng' // This could be expanded if the API provides more details
+        };
+      });
+      
+      setWithdrawalHistory(mappedWithdrawals);
+    } catch (error) {
+      console.error('❌ Error fetching withdrawal history:', error);
+      // Keep using mock data as fallback
+      const mockWithdrawalHistory: WithdrawalData[] = [
+        {
+          id: '1',
+          date: '2025-09-20',
+          amount: 3000000,
+          status: 'APPROVED',
+          method: 'Chuyển khoản ngân hàng',
+        },
+        {
+          id: '2',
+          date: '2025-09-15',
+          amount: 2500000,
+          status: 'PENDING',
+          method: 'Chuyển khoản ngân hàng',
+        },
+        {
+          id: '3',
+          date: '2025-09-10',
+          amount: 1500000,
+          status: 'PENDING',
+          method: 'Chuyển khoản ngân hàng',
+        },
+        {
+          id: '4',
+          date: '2025-09-05',
+          amount: 2000000,
+          status: 'REJECTED',
+          method: 'Chuyển khoản ngân hàng',
+        }
+      ];
+      setWithdrawalHistory(mockWithdrawalHistory);
+    }
+  }, [getWithdrawalHistoryByUser]);
 
   useEffect(() => {
-    fetchAnalytics();
-    if (user?.id) {
+    // Prevent infinite loops by checking if we've already fetched data for this user
+    if (user?.id && lastFetchedUserId.current !== user.id) {
+      lastFetchedUserId.current = user.id;
+      
+      fetchAnalytics();
       fetchFields(user.id);
-    }
-    if (user?.id) {
       fetchProfile(user.id);
+      fetchCashFlowData(user.id);
+      fetchWithdrawalHistory(user.id);
+    } else if (!user?.id) {
+      // Reset the ref when there's no user
+      lastFetchedUserId.current = null;
     }
-  }, [fetchAnalytics, fetchFields, fetchProfile, user]);
+  }, [fetchAnalytics, fetchFields, fetchProfile, user, fetchCashFlowData, fetchWithdrawalHistory]);
+
+  // Fetch revenue data when cashFlowData changes
+  useEffect(() => {
+    if (cashFlowData.length > 0 && cashFlowData[0].id) {
+      fetchRevenueData(cashFlowData[0].id);
+    }
+  }, [cashFlowData, fetchRevenueData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -46,105 +207,33 @@ const DashboardPage: React.FC = () => {
     }).format(amount);
   };
 
-  // Mock data for withdrawable amount - có thể lấy từ store sau
-  const withdrawableAmount = 5000000; // 5,000,000 VND
-
-  // Mock data for withdrawal history - có thể lấy từ store sau
-  const withdrawalHistory = [
-  {
-    id: '1',
-    date: '2025-09-20',
-    amount: 3000000,
-    status: 'completed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '2',
-    date: '2025-09-15',
-    amount: 2500000,
-    status: 'processing' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '3',
-    date: '2025-09-10',
-    amount: 1500000,
-    status: 'pending' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '4',
-    date: '2025-09-08',
-    amount: 2000000,
-    status: 'completed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '5',
-    date: '2025-09-05',
-    amount: 1000000,
-    status: 'failed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '6',
-    date: '2025-09-02',
-    amount: 3500000,
-    status: 'completed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '7',
-    date: '2025-08-28',
-    amount: 2200000,
-    status: 'pending' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '8',
-    date: '2025-08-25',
-    amount: 2700000,
-    status: 'processing' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '9',
-    date: '2025-08-20',
-    amount: 1800000,
-    status: 'failed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-  {
-    id: '10',
-    date: '2025-08-15',
-    amount: 4000000,
-    status: 'completed' as const,
-    method: 'Chuyển khoản ngân hàng',
-  },
-];
-
+  const refreshDashboardData = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Refresh all relevant data
+      await Promise.all([
+        fetchCashFlowData(user.id),
+        fetchWithdrawalHistory(user.id),
+        fetchAnalytics(),
+      ]);
+    } catch (error) {
+      console.error('❌ Error refreshing dashboard data:', error);
+    }
+  }, [user?.id, fetchCashFlowData, fetchWithdrawalHistory, fetchAnalytics]);
 
   const handleWithdrawRequest = (amount: number) => {
-    // TODO: Implement actual withdrawal logic with your store/API
-    console.log('Withdrawal request:', amount);
+    // Show success message
     alert(`Yêu cầu rút ${formatCurrency(amount)} đã được gửi!`);
     
-    // Here you would typically:
-    // 1. Call your withdrawal API
-    // 2. Update the withdrawal history store
-    // 3. Show loading state
-    // 4. Handle success/error responses
+    // Refresh data to update balance and withdrawal history
+    refreshDashboardData();
   };
 
-  if (analyticsLoading || fieldsLoading || profileLoading) {
+  if (analyticsLoading || fieldsLoading || profileLoading || cashFlowLoading) {
     return (
       <div className="p-6 flex items-center justify-center h-screen">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-blue-500 rounded-full animate-bounce"></div>
-          <div className="w-4 h-4 bg-blue-500 rounded-full animate-bounce delay-150"></div>
-          <div className="w-4 h-4 bg-blue-500 rounded-full animate-bounce delay-300"></div>
-          <span className="ml-2 text-slate-600">Đang tải dữ liệu...</span>
-        </div>
+        <LoadingSpinner size="lg" message="Đang tải dữ liệu..." />
       </div>
     );
   }
@@ -160,6 +249,9 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  // Get the cashFlowId from cashFlowData
+  const cashFlowId = cashFlowData.length > 0 ? cashFlowData[0].id : '';
+
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* Welcome Header */}
@@ -173,6 +265,7 @@ const DashboardPage: React.FC = () => {
         withdrawableAmount={withdrawableAmount}
         withdrawalHistory={withdrawalHistory}
         onWithdrawRequest={handleWithdrawRequest}
+        onRefreshData={refreshDashboardData}
       />
 
       {/* Stats Grid - 6 cards với 6 màu khác nhau */}
@@ -181,7 +274,7 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <StatCard
             title="Doanh thu hôm nay"
-            value={formatCurrency(analytics.dailyRevenue)}
+            value={formatCurrency(dailyRevenue)}
             icon={<DollarSign className="w-5 h-5 lg:w-6 lg:h-6" />}
             trend={{
               value: "+12.5%",
@@ -193,7 +286,7 @@ const DashboardPage: React.FC = () => {
 
           <StatCard
             title="Doanh Thu Tháng"
-            value={formatCurrency(analytics.monthlyRevenue)}
+            value={formatCurrency(monthlyRevenue)}
             icon={<Calendar className="w-6 h-6" />}
             trend={{
               value: "+8.7%",
@@ -205,7 +298,7 @@ const DashboardPage: React.FC = () => {
 
           <StatCard
             title="Tổng Doanh Thu"
-            value={formatCurrency(analytics.totalRevenue)}
+            value={formatCurrency(accountBalance)}
             icon={<DollarSign className="w-6 h-6" />}
             trend={{
               value: "+15.2%",
@@ -275,9 +368,8 @@ const DashboardPage: React.FC = () => {
       {/* Revenue Chart */}
       <div className="grid grid-cols-1 gap-6">
         <RevenueChart
-          dailyRevenue={analytics.dailyRevenue}
-          monthlyRevenue={analytics.monthlyRevenue}
-          totalRevenue={analytics.totalRevenue}
+          userId={user?.id || ''}
+          cashFlowId={cashFlowId}
           formatCurrency={formatCurrency}
         />
       </div>

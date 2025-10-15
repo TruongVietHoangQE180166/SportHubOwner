@@ -133,7 +133,6 @@ class AuthService {
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('email');
     sessionStorage.removeItem('role');
-    sessionStorage.removeItem('redirectUrl');
   }
 
   // New function to send OTP

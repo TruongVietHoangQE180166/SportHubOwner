@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Venue as Field } from '../types';
+import { Venue as Field, CashFlow, CashFlowResponse, Withdrawal, StatisticalResponse } from '../types';
 import { fieldService } from '../services/fieldService';
 import { OrderResponse } from '../types'; // Add this import
 
@@ -30,6 +30,12 @@ interface FieldStore {
   updateField: (id: string, updates: Partial<Field>) => Promise<void>;
   deleteField: (id: string) => Promise<void>;
   getOwnerOrders: (ownerId: string) => Promise<OrderResponse>; // Add this line
+  getCashFlowByUser: (userId: string) => Promise<CashFlow[]>; // Add this line
+  getCashFlowByUserByDay: (cashFlowId: string, day: number) => Promise<CashFlow>; // Add this line
+  getCashFlowUserBy7Day: (cashFlowId: string) => Promise<CashFlow>;
+  getCashFlowUserBy30Day: (cashFlowId: string) => Promise<CashFlow>;
+  getCashFlowUserBy90Day: (cashFlowId: string) => Promise<CashFlow>;
+  getWithdrawalHistoryByUser: (userId: string) => Promise<Withdrawal[]>; // Add this line
   clearError: () => void;
 }
 
@@ -164,6 +170,124 @@ export const useFieldStore = create<FieldStore>((set, get) => ({
       set({ 
         loading: false, 
         error: error instanceof Error ? error.message : 'Lỗi tải danh sách đơn hàng' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getCashFlowByUser function here
+  getCashFlowByUser: async (userId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const cashFlowResponse: CashFlowResponse = await fieldService.getCashFlowUser(userId);
+      set({ loading: false });
+      return cashFlowResponse.data.content;
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải dữ liệu giao dịch' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getCashFlowByUserByDay function here
+  getCashFlowByUserByDay: async (cashFlowId: string, day: number) => {
+    set({ loading: true, error: null });
+    
+    try {
+      let cashFlowResponse: any;
+      
+      // Call the appropriate function based on the day parameter
+      switch (day) {
+        case 7:
+          cashFlowResponse = await fieldService.getCashFlowUserBy7Day(cashFlowId, 7);
+          break;
+        case 30:
+          cashFlowResponse = await fieldService.getCashFlowUserBy30Day(cashFlowId, 30);
+          break;
+        case 90:
+          cashFlowResponse = await fieldService.getCashFlowUserBy90Day(cashFlowId, 90);
+          break;
+        default:
+          throw new Error('Invalid day parameter. Supported values are 7, 30, or 90.');
+      }
+      
+      set({ loading: false });
+      return cashFlowResponse.data; // Return the CashFlow object directly
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải dữ liệu giao dịch theo ngày' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getCashFlowUserBy7Day function here
+  getCashFlowUserBy7Day: async (cashFlowId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const cashFlowResponse: any = await fieldService.getCashFlowUserBy7Day(cashFlowId, 7);
+      set({ loading: false });
+      return cashFlowResponse.data;
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải dữ liệu giao dịch 7 ngày' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getCashFlowUserBy30Day function here
+  getCashFlowUserBy30Day: async (cashFlowId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const cashFlowResponse: any = await fieldService.getCashFlowUserBy30Day(cashFlowId, 30);
+      set({ loading: false });
+      return cashFlowResponse.data;
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải dữ liệu giao dịch 30 ngày' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getCashFlowUserBy90Day function here
+  getCashFlowUserBy90Day: async (cashFlowId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const cashFlowResponse: any = await fieldService.getCashFlowUserBy90Day(cashFlowId, 90);
+      set({ loading: false });
+      return cashFlowResponse.data;
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải dữ liệu giao dịch 90 ngày' 
+      });
+      throw error;
+    }
+  },
+
+  // Add the getWithdrawalHistoryByUser function here
+  getWithdrawalHistoryByUser: async (userId: string) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const withdrawalResponse = await fieldService.getAllWithdrawalUser(userId);
+      set({ loading: false });
+      return withdrawalResponse.data.content;
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Lỗi tải lịch sử rút tiền' 
       });
       throw error;
     }

@@ -106,7 +106,6 @@ const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip content={renderCustomTooltip} />
           </PieChart>
         </ResponsiveContainer>
       </div>

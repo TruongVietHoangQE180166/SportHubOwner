@@ -8,6 +8,7 @@ import Reviews from '../field/Reviews';
 import Pagination from '../field/Pagination';
 import FieldCalendar from '../field/FieldCalendar';
 import { useAuthStore } from '../../stores/authStore';
+import LoadingSpinner from '../ui/LoadingSpinner';
 import { Plus, Building2, Map, Loader2 } from 'lucide-react';
 import { Venue, SubField, Review } from '../../types';
 import { fieldService } from '../../services/fieldService';
@@ -451,10 +452,7 @@ const ManageFieldPage: React.FC = () => {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Đang tải thông tin sân...</p>
-          </div>
+          <LoadingSpinner size="md" message="Đang tải thông tin sân..." />
         </div>
       </div>
     );

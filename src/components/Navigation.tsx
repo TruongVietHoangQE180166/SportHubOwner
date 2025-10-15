@@ -43,10 +43,10 @@ const Navigation: React.FC<NavigationProps> = ({
     // Admin-specific navigation items
     if (userRole === 'ADMIN') {
       return [
-        { id: 'admin-dashboard', label: 'Admin Dashboard', icon: LayoutDashboard, path: '/admin-dashboard' },
-        { id: 'admin-users', label: 'User Management', icon: Users, path: '/admin-users' },
-        { id: 'admin-payments', label: 'Payment Management', icon: BarChart3, path: '/admin-payments' },
-        { id: 'admin-settings', label: 'Admin Settings', icon: Settings, path: '/admin-settings' },
+        { id: 'admin-dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin-dashboard' },
+        { id: 'admin-users', label: 'Quản Lý Người Dùng', icon: Users, path: '/admin-users' },
+        { id: 'admin-payments', label: 'Quản Lý Thanh Toán', icon: BarChart3, path: '/admin-payments' },
+        { id: 'admin-settings', label: 'Cài Đặt Admin', icon: Settings, path: '/admin-settings' },
       ];
     }
     

@@ -1,72 +1,141 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import { fieldService } from '../../services/fieldService';
+import { StatisticalResponse, CashFlowDailyResponse } from '../../types';
 
 interface RevenueChartProps {
-  dailyRevenue: number;
-  monthlyRevenue: number;
-  totalRevenue: number;
+  userId: string;
+  cashFlowId: string;
   formatCurrency: (amount: number) => string;
 }
 
-const generateChartData = (period: 'daily' | 'weekly' | 'monthly') => {
-  if (period === 'daily') {
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return {
-        name: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        revenue: Math.floor(Math.random() * 3000000) + 1000000
-      };
-    });
-  } else if (period === 'weekly') {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
-      return {
-        name: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        revenue: Math.floor(Math.random() * 4000000) + 1500000
-      };
-    });
-  } else {
-    return Array.from({ length: 90 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (89 - i));
-      return {
-        name: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        revenue: Math.floor(Math.random() * 5000000) + 2000000
-      };
-    });
-  }
-};
+interface ChartDataPoint {
+  name: string;
+  revenue: number;
+}
 
 const RevenueChart: React.FC<RevenueChartProps> = ({ 
-  dailyRevenue, 
-  monthlyRevenue, 
-  totalRevenue,
+  userId,
+  cashFlowId,
   formatCurrency
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [chartData, setChartData] = useState(generateChartData('daily'));
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [periodRevenue, setPeriodRevenue] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handlePeriodChange = (newPeriod: 'daily' | 'weekly' | 'monthly') => {
+  // Process data based on selected period
+  useEffect(() => {
+    let isCancelled = false; // Prevent state updates if component unmounts
+    
+    const processData = async () => {
+      if (isCancelled) {
+        return;
+      }
+      
+      if (!userId || !cashFlowId) {
+        return;
+      }
+      
+      try {
+        if (!isCancelled) {
+          setLoading(true);
+        }
+        
+        // Fetch data based on selected period
+        let cashFlowDataResponse: any;
+        
+        switch (period) {
+          case 'daily':
+            cashFlowDataResponse = await fieldService.getCashFlowUserBy7Day(cashFlowId, 7);
+            break;
+          case 'weekly':
+            cashFlowDataResponse = await fieldService.getCashFlowUserBy30Day(cashFlowId, 30);
+            break;
+          case 'monthly':
+            cashFlowDataResponse = await fieldService.getCashFlowUserBy90Day(cashFlowId, 90);
+            break;
+          default:
+            cashFlowDataResponse = await fieldService.getCashFlowUserBy7Day(cashFlowId, 7);
+        }
+        
+        if (isCancelled) {
+          return;
+        }
+        
+        // Handle the response structure based on actual API response
+        let statisticalData: StatisticalResponse[] | undefined;
+        
+        // Check if it's a full response object or just the data object
+        if (cashFlowDataResponse && cashFlowDataResponse.data && cashFlowDataResponse.data.statisticalResponses) {
+          // Full response structure
+          statisticalData = cashFlowDataResponse.data.statisticalResponses;
+        } else if (cashFlowDataResponse && cashFlowDataResponse.statisticalResponses) {
+          // Direct data structure
+          statisticalData = cashFlowDataResponse.statisticalResponses;
+        }
+        
+        if (!statisticalData) {
+          if (!isCancelled) {
+            setChartData([]);
+            setPeriodRevenue(0);
+          }
+          return;
+        }
+        
+        // Process statistical responses into chart data
+        const revenueData: ChartDataPoint[] = [];
+        let totalRevenue = 0;
+
+        for (const stat of statisticalData) {
+          const revenue = stat.amountForDay || 0;
+          totalRevenue += revenue;
+          
+          // Format date for display
+          // More robust date parsing to handle ISO date strings
+          const date = new Date(stat.day + 'T00:00:00');
+          const formattedDate = date.toLocaleDateString('vi-VN', { 
+            day: '2-digit', 
+            month: '2-digit' 
+          });
+          
+          revenueData.push({
+            name: formattedDate,
+            revenue
+          });
+        }
+        
+        if (!isCancelled) {
+          setChartData(revenueData);
+          setPeriodRevenue(totalRevenue);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setChartData([]);
+          setPeriodRevenue(0);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    processData();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [period, userId, cashFlowId]);
+
+  const handlePeriodChange = useCallback((newPeriod: 'daily' | 'weekly' | 'monthly') => {
     setPeriod(newPeriod);
-    setChartData(generateChartData(newPeriod));
-  };
+  }, [period]);
 
-  // Calculate revenue based on period
-  const calculatePeriodRevenue = () => {
-    // In a real app, this would come from props or API
-    // For now, we'll use the generated chart data
-    const total = chartData.reduce((sum, item) => sum + item.revenue, 0);
-    return total;
-  };
-
-  const periodRevenue = calculatePeriodRevenue();
-
-  const getXAxisProps = () => {
+  const getXAxisProps = useMemo(() => {
     if (period === 'daily') {
       return {
         dataKey: "name",
@@ -85,17 +154,17 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         interval: 14 
       };
     }
-  };
+  }, [period]);
 
   // Get label for current period
-  const getPeriodLabel = () => {
+  const getPeriodLabel = useMemo(() => {
     switch (period) {
       case 'daily': return '7 ngày';
       case 'weekly': return '30 ngày';
       case 'monthly': return '90 ngày';
       default: return '';
     }
-  };
+  }, [period]);
 
   return (
     <div className="bg-white rounded-lg lg:rounded-xl p-4 lg:p-6 shadow-lg border border-gray-200">
@@ -135,65 +204,81 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         </div>
       </div>
       
-      <div className="h-80 bg-gray-50 rounded-lg p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis {...getXAxisProps()} />
-            <YAxis 
-              tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-            />
-            <Tooltip 
-              formatter={(value) => [formatCurrency(Number(value)), 'Doanh thu']}
-              labelStyle={{ color: '#111827', fontWeight: 600 }}
-              contentStyle={{ 
-                borderRadius: '0.5rem',
-                border: '2px solid #9ca3af',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                backgroundColor: '#ffffff'
-              }}
-            />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="revenue" 
-              name="Doanh thu" 
-              stroke="#10b981" 
-              activeDot={{ r: 8, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }} 
-              strokeWidth={3}
-              dot={{ fill: '#10b981', strokeWidth: 2, stroke: '#ffffff', r: 4 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {loading ? (
+        <div className="h-80 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="text-gray-500">Đang tải dữ liệu...</div>
+        </div>
+      ) : chartData.length === 0 ? (
+        <div className="h-80 flex flex-col items-center justify-center bg-gray-50 rounded-lg">
+          <div className="text-gray-500 text-lg mb-2">Không có dữ liệu</div>
+          <div className="text-gray-400 text-sm">Dữ liệu doanh thu sẽ hiển thị ở đây</div>
+        </div>
+      ) : (
+        <div className="h-80 bg-gray-50 rounded-lg p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis {...getXAxisProps} />
+              <YAxis 
+                tickFormatter={(value) => {
+                  if (value >= 1000000) {
+                    return `${(value / 1000000).toFixed(1)}M`;
+                  } else if (value >= 1000) {
+                    return `${(value / 1000).toFixed(1)}K`;
+                  } else {
+                    return value.toString();
+                  }
+                }}
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+              />
+              <Tooltip 
+                formatter={(value) => [formatCurrency(Number(value)), 'Doanh thu']}
+                labelStyle={{ color: '#111827', fontWeight: 600 }}
+                contentStyle={{ 
+                  borderRadius: '0.5rem',
+                  border: '2px solid #9ca3af',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  backgroundColor: '#ffffff'
+                }}
+              />
+              <Legend />
+              <Line 
+                type="monotone" 
+                dataKey="revenue" 
+                name="Doanh thu" 
+                stroke="#10b981" 
+                activeDot={{ r: 8, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }} 
+                strokeWidth={3}
+                dot={{ fill: '#10b981', strokeWidth: 2, stroke: '#ffffff', r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       
-      {/* Period Revenue Cards with More Gray Tones */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-        <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-lg p-4 text-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm font-medium mb-1">Doanh thu 7 ngày</p>
-          <p className="text-xl font-bold">{formatCurrency(
-            period === 'daily' ? periodRevenue : 
-            generateChartData('daily').reduce((sum, item) => sum + item.revenue, 0)
-          )}</p>
-        </div>
-        <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-lg p-4 text-gray-900 shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm font-medium mb-1">Doanh thu 30 ngày</p>
-          <p className="text-xl font-bold">{formatCurrency(
-            period === 'weekly' ? periodRevenue : 
-            generateChartData('weekly').reduce((sum, item) => sum + item.revenue, 0)
-          )}</p>
-        </div>
-        <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-          <p className="text-sm text-gray-100 font-medium mb-1">Doanh thu 90 ngày</p>
-          <p className="text-xl font-bold">{formatCurrency(
-            period === 'monthly' ? periodRevenue : 
-            generateChartData('monthly').reduce((sum, item) => sum + item.revenue, 0)
-          )}</p>
-        </div>
+      {/* Period Revenue Card - Display only the selected period card */}
+      <div className="mt-6">
+        {period === 'daily' && (
+          <div className="bg-gradient-to-br from-green-400 to-green-500 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <p className="text-sm font-medium mb-1">Doanh thu 7 ngày</p>
+            <p className="text-xl font-bold">{formatCurrency(periodRevenue)}</p>
+          </div>
+        )}
+        {period === 'weekly' && (
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <p className="text-sm font-medium mb-1">Doanh thu 30 ngày</p>
+            <p className="text-xl font-bold">{formatCurrency(periodRevenue)}</p>
+          </div>
+        )}
+        {period === 'monthly' && (
+          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-4 text-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <p className="text-sm font-medium mb-1">Doanh thu 90 ngày</p>
+            <p className="text-xl font-bold">{formatCurrency(periodRevenue)}</p>
+          </div>
+        )}
       </div>
     </div>
   );

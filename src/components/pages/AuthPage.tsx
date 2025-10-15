@@ -20,23 +20,15 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectUrl = sessionStorage.getItem('redirectUrl') || '/dashboard';
-      sessionStorage.removeItem('redirectUrl');
-      
       // Check user role and redirect appropriately
       if (user?.role === 'ADMIN') {
         // If user is admin, redirect to admin dashboard
         router.push('/admin-dashboard');
       } else if (user?.role === 'OWNER') {
         // If user is owner, redirect to owner dashboard
-        // Make sure we don't redirect to admin pages
-        if (redirectUrl.startsWith('/admin-')) {
-          router.push('/dashboard');
-        } else {
-          router.push(redirectUrl);
-        }
+        router.push('/dashboard');
       } else {
-        router.push(redirectUrl);
+        router.push('/dashboard');
       }
     }
   }, [isAuthenticated, user, router]);

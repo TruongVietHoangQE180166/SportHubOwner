@@ -6,6 +6,7 @@ import OrderListView from "../booking/OrderListView";
 import OrderDetailView from "../booking/OrderDetailView";
 import { useBookingStore } from "../../stores/bookingStore";
 import { useAuthStore } from "../../stores/authStore";
+import LoadingSpinner from "../ui/LoadingSpinner";
 import { Order } from "../../types";
 
 const BookingManageScreen: React.FC = () => {
@@ -55,7 +56,7 @@ const BookingManageScreen: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+        <LoadingSpinner size="md" message="Đang tải..." />
       </div>
     );
   }

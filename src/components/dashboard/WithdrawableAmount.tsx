@@ -13,14 +13,16 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
-  Activity
+  Activity,
+  Edit3
 } from 'lucide-react';
+import { fieldService } from '../../services/fieldService';
 
 interface WithdrawalData {
   id: string;
   date: string;
   amount: number;
-  status: 'completed' | 'processing' | 'pending' | 'failed';
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
   method: string;
 }
 
@@ -29,17 +31,21 @@ interface WithdrawalDashboardProps {
   withdrawalHistory: WithdrawalData[];
   onWithdrawRequest: (amount: number) => void;
   loading?: boolean;
+  // Add a new prop to refresh data
+  onRefreshData?: () => void;
 }
 
 const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({ 
   withdrawableAmount, 
   withdrawalHistory,
   onWithdrawRequest,
-  loading = false
+  loading = false,
+  onRefreshData
 }) => {
-  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [description, setDescription] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const itemsPerPage = 6;
 
   // Calculate pagination
@@ -59,47 +65,52 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
     }).format(amount);
   };
 
-  const formatInputValue = (value: string) => {
-    const numericValue = value.replace(/\D/g, '');
-    return new Intl.NumberFormat('vi-VN').format(parseInt(numericValue) || 0);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setWithdrawAmount(value);
-    setError('');
-  };
-
-  const setQuickAmount = (percentage: number) => {
-    const quickAmount = Math.floor(withdrawableAmount * percentage);
-    setWithdrawAmount(quickAmount.toString());
-    setError('');
-  };
-
-  const handleWithdraw = () => {
-    const withdrawValue = parseInt(withdrawAmount.replace(/\D/g, ''));
-    
-    if (!withdrawValue || withdrawValue <= 0) {
-      setError('Vui lòng nhập số tiền hợp lệ');
+  const handleWithdraw = async () => {
+    // Validate that there's an amount to withdraw
+    if (withdrawableAmount <= 0) {
+      setError('Không có tiền khả dụng để rút');
       return;
     }
     
-    if (withdrawValue > withdrawableAmount) {
-      setError('Số tiền rút vượt quá số dư khả dụng');
+    if (withdrawableAmount < 1000) {
+      setError('Số tiền rút tối thiểu là 1,000 VND');
       return;
     }
     
-    if (withdrawValue < 50000) {
-      setError('Số tiền rút tối thiểu là 50,000 VND');
+    if (!description.trim()) {
+      setError('Vui lòng nhập mô tả cho yêu cầu rút tiền');
       return;
     }
     
     setError('');
-    onWithdrawRequest(withdrawValue);
+    setIsProcessing(true);
+    
+    try {
+      // Call the new withdrawal function from fieldService
+      await fieldService.createWithdrawal({
+        description: description.trim(),
+        amount: withdrawableAmount
+      });
+      
+      // If successful, call the original callback to update UI
+      onWithdrawRequest(withdrawableAmount);
+      setDescription(''); // Clear description after successful withdrawal
+      
+      // Reload data to update balance and withdrawal history
+      if (onRefreshData) {
+        setTimeout(() => {
+          onRefreshData();
+        }, 1000); // Small delay to ensure the API has processed the request
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Có lỗi xảy ra khi thực hiện yêu cầu rút tiền');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Calculate statistics
-  const completedWithdrawals = withdrawalHistory.filter(w => w.status === 'completed');
+  const completedWithdrawals = withdrawalHistory.filter(w => w.status === 'APPROVED');
   const totalWithdrawn = completedWithdrawals.reduce((sum, w) => sum + w.amount, 0);
   const avgWithdrawal = completedWithdrawals.length > 0 ? totalWithdrawn / completedWithdrawals.length : 0;
   const thisMonthWithdrawals = withdrawalHistory.filter(w => {
@@ -130,13 +141,11 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'APPROVED':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'processing':
-        return <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-400" />;
-      case 'failed':
+      case 'PENDING':
+        return <RefreshCw className="w-4 h-4 text-yellow-400 animate-spin" />;
+      case 'REJECTED':
         return <AlertCircle className="w-4 h-4 text-red-400" />;
       default:
         return null;
@@ -145,13 +154,11 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'APPROVED':
         return 'text-green-400 bg-green-900';
-      case 'processing':
-        return 'text-blue-400 bg-blue-900';
-      case 'pending':
+      case 'PENDING':
         return 'text-yellow-400 bg-yellow-900';
-      case 'failed':
+      case 'REJECTED':
         return 'text-red-400 bg-red-900';
       default:
         return 'text-gray-400 bg-gray-900';
@@ -209,14 +216,12 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
                           <div className="flex items-center justify-center space-x-1">
                             {getStatusIcon(withdrawal.status)}
                             <span className={`text-xs font-medium ${
-                              withdrawal.status === 'completed' ? 'text-green-400' :
-                              withdrawal.status === 'processing' ? 'text-blue-400' :
-                              withdrawal.status === 'pending' ? 'text-yellow-400' :
+                              withdrawal.status === 'APPROVED' ? 'text-green-400' :
+                              withdrawal.status === 'PENDING' ? 'text-yellow-400' :
                               'text-red-400'
                             }`}>
-                              {withdrawal.status === 'completed' ? 'Hoàn thành' :
-                               withdrawal.status === 'processing' ? 'Đang xử lý' :
-                               withdrawal.status === 'pending' ? 'Chờ duyệt' : 'Thất bại'}
+                              {withdrawal.status === 'APPROVED' ? 'Hoàn thành' :
+                               withdrawal.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
                             </span>
                           </div>
                         </td>
@@ -397,39 +402,35 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
             </div>
           </div>
 
-          {/* Withdraw Form */}
+          {/* Withdraw Information */}
           <div className="mb-8">
             <div className="bg-slate-700 bg-opacity-50 backdrop-blur-sm rounded-2xl p-6 border border-slate-500">
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <ArrowDownCircle className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-lg font-bold text-white">Nhập số tiền muốn rút</h3>
+                <h3 className="text-lg font-bold text-white">Rút tiền</h3>
               </div>
               
               <div className="space-y-4">
-                {/* Amount Input */}
-                <div>
-                  <input
-                    type="text"
-                    value={withdrawAmount ? formatInputValue(withdrawAmount) : ''}
-                    onChange={handleInputChange}
-                    placeholder="Nhập số tiền rút..."
-                    disabled={loading}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50"
+                {/* Description Input */}
+                <div className="space-y-2">
+                  <label className="text-slate-300 text-sm font-medium flex items-center space-x-1">
+                    <Edit3 className="w-4 h-4" />
+                    <span>Mô tả</span>
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Nhập mô tả cho yêu cầu rút tiền..."
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                    rows={3}
+                    disabled={isProcessing || withdrawableAmount <= 0}
                   />
                 </div>
                 
-                {/* Quick Amount Buttons */}
-                <div className="grid grid-cols-4 gap-2">
-                  {[0.25, 0.5, 0.75, 1].map((percentage) => (
-                    <button
-                      key={percentage}
-                      onClick={() => setQuickAmount(percentage)}
-                      disabled={loading || withdrawableAmount <= 0}
-                      className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded-lg transition-all duration-200 disabled:opacity-50"
-                    >
-                      {percentage === 1 ? 'Tất cả' : `${percentage * 100}%`}
-                    </button>
-                  ))}
+                <div className="text-center">
+                  <p className="text-slate-300 mb-2">Số tiền sẽ được rút:</p>
+                  <p className="text-2xl font-bold text-emerald-400">{formatCurrency(withdrawableAmount)}</p>
+                  <p className="text-xs text-slate-400 mt-1">Toàn bộ số dư khả dụng</p>
                 </div>
                 
                 {/* Error Message */}
@@ -449,17 +450,17 @@ const WithdrawalDashboard: React.FC<WithdrawalDashboardProps> = ({
           <div className="flex justify-center">
             <button
               onClick={handleWithdraw}
-              disabled={loading || !withdrawAmount || withdrawableAmount <= 0}
+              disabled={isProcessing || loading || withdrawableAmount <= 0}
               className={`relative flex items-center space-x-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl ${
-                loading || !withdrawAmount || withdrawableAmount <= 0
+                isProcessing || loading || withdrawableAmount <= 0
                   ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/30 hover:shadow-emerald-500/50'
               }`}
             >
-              <ArrowDownCircle className={`w-6 h-6 ${loading ? 'animate-spin' : 'animate-bounce'}`} />
-              <span>{loading ? 'Đang rút tiền...' : 'Xác nhận rút tiền'}</span>
+              <ArrowDownCircle className={`w-6 h-6 ${isProcessing ? 'animate-spin' : 'animate-bounce'}`} />
+              <span>{isProcessing ? 'Đang rút tiền...' : 'Rút toàn bộ tiền'}</span>
               
-              {!loading && withdrawAmount && withdrawableAmount > 0 && (
+              {!isProcessing && withdrawableAmount > 0 && (
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
               )}
             </button>

@@ -231,6 +231,30 @@ interface CashFlowResponse {
   success: boolean;
 }
 
+// Interface for dashboard response
+interface DashboardResponse {
+  message: {
+    messageCode: string;
+    messageDetail: string;
+  };
+  errors: null;
+  data: {
+    times: Record<string, number>;
+    totalBookingToday: number;
+    totalBookings: number;
+    topFields: {
+      id: string;
+      createdDate: string;
+      smallFiledName: string;
+      description: string;
+      capacity: string;
+      booked: boolean;
+      available: boolean;
+    }[];
+  };
+  success: boolean;
+}
+
 class FieldService {
   private fields: Field[] = mockFields;
   private idCounter: number = Date.now();
@@ -842,6 +866,23 @@ class FieldService {
         throw new Error(error.response.data.message.messageDetail);
       }
       throw new Error('Không thể lấy dữ liệu giao dịch theo ngày. Vui lòng thử lại sau.');
+    }
+  }
+
+  async getDashboardData(fieldId: string): Promise<DashboardResponse> {
+    try {
+      const response = await api.get<DashboardResponse>('/api/booking/dashboard/{fieldId}', {
+        params: {
+          fieldId
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message?.messageDetail) {
+        throw new Error(error.response.data.message.messageDetail);
+      }
+      throw new Error('Không thể lấy dữ liệu dashboard. Vui lòng thử lại sau.');
     }
   }
 

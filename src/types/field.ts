@@ -29,6 +29,8 @@ export interface Venue {
   amenities?: string[];
   // Adding properties that are used in API mapping
   ownerPhone?: string;
+  // Adding smallFieldResponses for dashboard calculations
+  smallFieldResponses?: SmallField[];
 }
 
 export interface SubField {

@@ -9,8 +9,8 @@ interface PeakHoursProps {
 
 const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
   // Colors for pie chart segments - green variants
-  const COLORS = ['#10b981', '#059669', '#047857', '#065f46'];
-
+  const BASE_COLORS = ['#10b981', '#059669', '#047857', '#065f46', '#044f3d', '#033f31'];
+  
   // Function to format hour as time range
   const formatHourRange = (hour: string) => {
     const startHour = parseInt(hour.split(':')[0]);
@@ -18,27 +18,33 @@ const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
     return `${hour}-${endHour.toString().padStart(2, '0')}:00`;
   };
 
-  // Sort peak hours by bookings and take top 3
+  // Sort peak hours by bookings
   const sortedHours = [...analytics.peakHours].sort((a, b) => b.bookings - a.bookings);
-  const top3Hours = sortedHours.slice(0, 3);
-  const otherHours = sortedHours.slice(3);
   
-  // Calculate total bookings for "Others" category
-  const othersTotal = otherHours.reduce((sum, hour) => sum + hour.bookings, 0);
+  // Use all available hours instead of limiting to top 3
+  const allHours = sortedHours;
+  
+  // Dynamically assign colors based on number of slots
+  const getColors = () => {
+    if (allHours.length <= BASE_COLORS.length) {
+      return BASE_COLORS.slice(0, allHours.length);
+    }
+    // If we have more hours than colors, repeat the color pattern
+    const colors = [];
+    for (let i = 0; i < allHours.length; i++) {
+      colors.push(BASE_COLORS[i % BASE_COLORS.length]);
+    }
+    return colors;
+  };
+  
+  const COLORS = getColors();
 
   // Prepare data for pie chart
-  const pieData = [
-    ...top3Hours.map((hour, index) => ({
-      name: formatHourRange(hour.hour),
-      value: hour.bookings,
-      color: COLORS[index]
-    })),
-    ...(othersTotal > 0 ? [{
-      name: 'Khung giờ khác',
-      value: othersTotal,
-      color: COLORS[3]
-    }] : [])
-  ];
+  const pieData = allHours.map((hour, index) => ({
+    name: formatHourRange(hour.hour),
+    value: hour.bookings,
+    color: COLORS[index]
+  }));
 
   const renderCustomTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: { name: string; value: number } }[] }) => {
     if (active && payload && payload.length) {
@@ -79,6 +85,13 @@ const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
     );
   };
 
+  // Calculate grid columns based on number of hours (responsive)
+  const getGridClass = () => {
+    if (allHours.length <= 2) return "grid grid-cols-1 sm:grid-cols-2 gap-4";
+    if (allHours.length === 3) return "grid grid-cols-1 sm:grid-cols-3 gap-4";
+    return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4";
+  };
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
@@ -110,9 +123,9 @@ const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
         </ResponsiveContainer>
       </div>
 
-      {/* Statistics Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {top3Hours.map((hour, index) => (
+      {/* Statistics Summary - Dynamically adjust based on number of time slots */}
+      <div className={getGridClass()}>
+        {allHours.map((hour, index) => (
           <div 
             key={index}
             className="bg-gray-50 rounded-lg p-4 border border-gray-200"
@@ -129,22 +142,6 @@ const PeakHours: React.FC<PeakHoursProps> = ({ analytics }) => {
             </div>
           </div>
         ))}
-        {othersTotal > 0 && (
-          <div 
-            className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-          >
-            <div className="flex items-center space-x-3">
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: COLORS[3] }}
-              ></div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-black text-sm">Khung giờ khác</p>
-                <p className="text-xs text-gray-600">{othersTotal} đặt sân</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -35,6 +35,22 @@ interface WithdrawalData {
   method: string;
 }
 
+// Define the DashboardData interface
+interface DashboardData {
+  times: Record<string, number>;
+  totalBookingToday: number;
+  totalBookings: number;
+  topFields: {
+    id: string;
+    createdDate: string;
+    smallFiledName: string;
+    description: string;
+    capacity: string;
+    booked: boolean;
+    available: boolean;
+  }[];
+}
+
 const DashboardPage: React.FC = () => {
   const { analytics, loading: analyticsLoading, fetchAnalytics } = useAnalyticsStore();
   const { fields, loading: fieldsLoading, fetchFields, getCashFlowByUser, getWithdrawalHistoryByUser } = useFieldStore();
@@ -47,6 +63,8 @@ const DashboardPage: React.FC = () => {
   const [cashFlowLoading, setCashFlowLoading] = useState<boolean>(false);
   const [dailyRevenue, setDailyRevenue] = useState<number>(0);
   const [monthlyRevenue, setMonthlyRevenue] = useState<number>(0);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState<boolean>(false);
   const lastFetchedUserId = useRef<string | null>(null);
 
   const fetchCashFlowData = useCallback(async (userId: string) => {
@@ -177,6 +195,18 @@ const DashboardPage: React.FC = () => {
     }
   }, [getWithdrawalHistoryByUser]);
 
+  const fetchDashboardData = useCallback(async (fieldId: string) => {
+    setDashboardLoading(true);
+    try {
+      const response = await fieldService.getDashboardData(fieldId);
+      setDashboardData(response.data);
+    } catch (error) {
+      console.error('❌ Error fetching dashboard data:', error);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Prevent infinite loops by checking if we've already fetched data for this user
     if (user?.id && lastFetchedUserId.current !== user.id) {
@@ -192,6 +222,13 @@ const DashboardPage: React.FC = () => {
       lastFetchedUserId.current = null;
     }
   }, [fetchAnalytics, fetchFields, fetchProfile, user, fetchCashFlowData, fetchWithdrawalHistory]);
+
+  // Fetch dashboard data when fields change
+  useEffect(() => {
+    if (fields.length > 0 && fields[0].id) {
+      fetchDashboardData(fields[0].id);
+    }
+  }, [fields, fetchDashboardData]);
 
   // Fetch revenue data when cashFlowData changes
   useEffect(() => {
@@ -230,7 +267,7 @@ const DashboardPage: React.FC = () => {
     refreshDashboardData();
   };
 
-  if (analyticsLoading || fieldsLoading || profileLoading || cashFlowLoading) {
+  if (analyticsLoading || fieldsLoading || profileLoading || cashFlowLoading || dashboardLoading) {
     return (
       <div className="p-6 flex items-center justify-center h-screen">
         <LoadingSpinner size="lg" message="Đang tải dữ liệu..." />
@@ -252,6 +289,30 @@ const DashboardPage: React.FC = () => {
   // Get the cashFlowId from cashFlowData
   const cashFlowId = cashFlowData.length > 0 ? cashFlowData[0].id : '';
 
+  // Use dashboard data if available, otherwise fallback to analytics data
+  // Transform peak hours data to match expected format and handle new time range format
+  const peakHoursData = dashboardData?.times 
+    ? Object.entries(dashboardData.times).map(([hourRange, bookings]) => {
+        // Extract the start hour from the range (e.g., "18:00 - 19:00" -> "18:00")
+        const hour = hourRange.split(' - ')[0];
+        return {
+          hour,
+          bookings
+        };
+      })
+    : analytics.peakHours;
+    
+  // Transform popular fields data to show description and capacity instead of bookings and revenue
+  const popularFieldsData = dashboardData?.topFields
+    ? dashboardData.topFields.map(field => ({
+        fieldName: field.smallFiledName,
+        // Using bookings field to store capacity info for display purposes
+        bookings: parseInt(field.capacity) || 0,
+        // Using revenue field to store a flag to indicate we want to show description
+        revenue: field.description ? 1 : 0
+      }))
+    : analytics.popularFields;
+
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* Welcome Header */}
@@ -268,10 +329,34 @@ const DashboardPage: React.FC = () => {
         onRefreshData={refreshDashboardData}
       />
 
-      {/* Stats Grid - 6 cards với 6 màu khác nhau */}
+      {/* Stats Grid - Updated to use dashboard data where available - 3 rows with 3 cards each */}
       <div className="grid grid-cols-1 gap-6">
-        {/* Revenue-related cards (top row) */}
+        {/* First row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+          <StatCard
+            title="Đặt sân hôm nay"
+            value={dashboardData?.totalBookingToday ?? analytics.dailyBookings}
+            icon={<Calendar className="w-5 h-5 lg:w-6 lg:h-6" />}
+            trend={{
+              value: "+8.2%",
+              label: "so với hôm qua",
+              positive: true,
+            }}
+            colorVariant="white"
+          />
+
+          <StatCard
+            title="Tổng số đặt sân"
+            value={dashboardData?.totalBookings ?? analytics.totalBookings}
+            icon={<Users className="w-6 h-6" />}
+            trend={{
+              value: "+12.3%",
+              label: "so với tháng trước",
+              positive: true
+            }}
+            colorVariant="darkGray"
+          />
+          
           <StatCard
             title="Doanh thu hôm nay"
             value={formatCurrency(dailyRevenue)}
@@ -283,7 +368,10 @@ const DashboardPage: React.FC = () => {
             }}
             colorVariant="green"
           />
-
+        </div>
+        
+        {/* Second row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <StatCard
             title="Doanh Thu Tháng"
             value={formatCurrency(monthlyRevenue)}
@@ -307,61 +395,35 @@ const DashboardPage: React.FC = () => {
             }}
             colorVariant="gray"
           />
-        </div>
-        
-        {/* Field-related cards (bottom row) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-          <StatCard
-            title="Đặt sân hôm nay"
-            value={analytics.dailyBookings}
-            icon={<Calendar className="w-5 h-5 lg:w-6 lg:h-6" />}
-            trend={{
-              value: "+8.2%",
-              label: "so với hôm qua",
-              positive: true,
-            }}
-            colorVariant="white"
-          />
-
+          
           <StatCard
             title="Tổng số sân"
-            value={fields.length}
+            value={fields.reduce((total, field) => total + (field.smallFieldResponses?.length || 0), 0)}
             icon={<MapPin className="w-5 h-5 lg:w-6 lg:h-6" />}
             additionalInfo={
               <span className="text-xs lg:text-sm text-emerald-100 font-medium">
-                {fields.filter((f) => f.isActive).length} hoạt động
+                {fields.filter((f) => f.isActive).length} sân lớn hoạt động
               </span>
             }
             useCheckCircle={true}
             colorVariant="lightGreen"
           />
-          
-          <StatCard
-            title="Tổng Đặt Sân"
-            value={analytics.totalBookings}
-            icon={<Users className="w-6 h-6" />}
-            trend={{
-              value: "+12.3%",
-              label: "so với tháng trước",
-              positive: true
-            }}
-            colorVariant="darkGray"
-          />
         </div>
+
       </div>
 
-      {/* Popular Fields */}
+      {/* Popular Fields - Updated to use dashboard data */}
       <div className="grid grid-cols-1 gap-6">
         <PopularFields
-          popularFields={analytics.popularFields}
+          popularFields={popularFieldsData}
           formatCurrency={formatCurrency}
         />
       </div>
 
-      {/* Analytics Section - Peak Hours */}
+      {/* Analytics Section - Peak Hours - Updated to use dashboard data */}
       <div className="mt-8 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-          <PeakHours analytics={analytics} />
+          <PeakHours analytics={{ ...analytics, peakHours: peakHoursData }} />
         </div>
       </div>
       

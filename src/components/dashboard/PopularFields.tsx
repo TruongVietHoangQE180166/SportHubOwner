@@ -38,11 +38,17 @@ const PopularFields: React.FC<PopularFieldsProps> = ({ popularFields, formatCurr
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-900 text-sm lg:text-base truncate">{field.fieldName}</p>
-                <p className="text-xs lg:text-sm text-gray-600 font-medium">{field.bookings} lượt đặt</p>
+                {/* Display capacity information */}
+                <p className="text-xs lg:text-sm text-gray-600 font-medium">
+                  {field.bookings > 0 ? `Sức chứa: ${field.bookings} người` : 'Sức chứa: Không xác định'}
+                </p>
               </div>
             </div>
             <div className="text-right flex-shrink-0 ml-4">
-              <p className="font-bold text-gray-900 text-sm lg:text-base">{formatCurrency(field.revenue)}</p>
+              {/* Display description information */}
+              <p className="font-bold text-gray-900 text-sm lg:text-base">
+                {field.revenue > 0 ? 'Sân PickleBall tiêu chuẩn' : 'Loại sân: Không xác định'}
+              </p>
             </div>
           </div>
         ))}
